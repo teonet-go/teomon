@@ -70,7 +70,7 @@ func (teo *Teomon) Commands() *Teomon {
 				SetName("list").                // Command name
 				SetShort("get list of peers").  // Short description
 				// SetUsage("<name string>").      // Usage (input parameter)
-				SetReturn("<answer []Metric>"). // Return (output parameters)
+				SetReturn("<answer []*Metric>"). // Return (output parameters)
 				// Command reader (execute when command received)
 				SetReader(func(c *teonet.Channel, p *teonet.Packet, data []byte) bool {
 					fmt.Println("got list command from", c)

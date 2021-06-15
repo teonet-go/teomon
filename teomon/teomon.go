@@ -8,6 +8,8 @@ package teomon
 import (
 	"bytes"
 	"encoding/binary"
+	"fmt"
+	"sort"
 	"time"
 )
 
@@ -27,7 +29,9 @@ func Connect(teo TeonetInterface, address string, m Metric) {
 		time.Sleep(1 * time.Second)
 	}
 
-	teo.SendTo(address, []byte{130})
+	data, _ := m.MarshalBinary()
+	data = append([]byte{CmdMetric}, data...)
+	teo.SendTo(address, data)
 }
 
 type Peers []*Metric
@@ -72,11 +76,52 @@ func (m *Metric) UnmarshalBinary(data []byte) (err error) {
 	return
 }
 
+func (p Peers) MarshalBinary() (data []byte, err error) {
+	buf := new(bytes.Buffer)
+
+	l := uint16(len(p))
+	binary.Write(buf, binary.LittleEndian, l)
+	for _, m := range p {
+		d, _ := m.MarshalBinary()
+		// binary.Write(buf, binary.LittleEndian, d)
+		m.WriteSlice(buf, d)
+	}
+
+	data = buf.Bytes()
+	return
+}
+
+func (p *Peers) UnmarshalBinary(data []byte) (err error) {
+	buf := bytes.NewBuffer(data)
+
+	*p = nil
+	var l uint16
+	if err = binary.Read(buf, binary.LittleEndian, &l); err != nil {
+		return
+	}
+	for i := 0; i < int(l); i++ {
+		var m Metric
+		var d []byte
+		d, err = m.ReadSlice(buf)
+		if err != nil {
+			return
+		}
+		err = m.UnmarshalBinary(d)
+		if err != nil {
+			return
+		}
+		*p = append(*p, &m)
+	}
+
+	return
+}
+
 // find metric by address
 func (p Peers) find(address string) (m *Metric, idx int, ok bool) {
 	for idx, m = range p {
 		if m.Address == address {
 			ok = true
+			return
 		}
 	}
 	return
@@ -101,16 +146,14 @@ func (p Peers) List() (data []byte) {
 	return
 }
 
-func (p Peers) MarshalBinary() (data []byte, err error) {
-	buf := new(bytes.Buffer)
-
-	l := uint16(len(p))
-	binary.Write(buf, binary.LittleEndian, l)
+func (p Peers) String() (str string) {
+	sort.Slice(p, func(i, j int) bool { return p[i].AppShort < p[j].AppShort })
 	for i, m := range p {
-		m.WriteSlice(buf, []byte(p[i].Address))
+		if i > 0 {
+			str += "\n"
+		}
+		str += fmt.Sprintf("%s, ver %s, addr: %s", m.AppShort, m.AppVersion, m.Address)
 	}
-
-	data = buf.Bytes()
 	return
 }
 
