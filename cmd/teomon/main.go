@@ -17,7 +17,7 @@ import (
 const (
 	appName    = "Teonet monitoring server application"
 	appShort   = "teomon"
-	appVersion = "0.0.1"
+	appVersion = "0.2.0"
 	appLong    = ""
 )
 

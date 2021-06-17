@@ -11,6 +11,8 @@ import (
 	"fmt"
 	"sort"
 	"time"
+
+	"github.com/kirill-scherba/bslice"
 )
 
 const (
@@ -18,6 +20,7 @@ const (
 )
 
 type TeonetInterface interface {
+	WhenConnectedTo(address string, f func())
 	ConnectTo(address string, attr ...interface{}) error
 	SendTo(address string, data []byte, attr ...interface{}) (uint32, error)
 }
@@ -25,13 +28,16 @@ type TeonetInterface interface {
 // Connect to monitor peer and send metric
 func Connect(teo TeonetInterface, address string, m Metric) {
 
+	teo.WhenConnectedTo(address, func() {
+		data, _ := m.MarshalBinary()
+		data = append([]byte{CmdMetric}, data...)
+		teo.SendTo(address, data)
+	})
+
 	for teo.ConnectTo(address) != nil {
 		time.Sleep(1 * time.Second)
 	}
 
-	data, _ := m.MarshalBinary()
-	data = append([]byte{CmdMetric}, data...)
-	teo.SendTo(address, data)
 }
 
 type Peers []*Metric
@@ -42,7 +48,7 @@ type Metric struct {
 	AppShort   string
 	AppVersion string
 
-	ByteSlice
+	bslice.ByteSlice
 }
 
 func (m Metric) MarshalBinary() (data []byte, err error) {
@@ -154,34 +160,5 @@ func (p Peers) String() (str string) {
 		}
 		str += fmt.Sprintf("%s, ver %s, addr: %s", m.AppShort, m.AppVersion, m.Address)
 	}
-	return
-}
-
-type ByteSlice struct{}
-
-func (b ByteSlice) WriteSlice(buf *bytes.Buffer, data []byte) (err error) {
-	if err = binary.Write(buf, binary.LittleEndian, uint16(len(data))); err != nil {
-		return
-	}
-	err = binary.Write(buf, binary.LittleEndian, data)
-	return
-}
-
-func (b ByteSlice) ReadSlice(buf *bytes.Buffer) (data []byte, err error) {
-	var l uint16
-	if err = binary.Read(buf, binary.LittleEndian, &l); err != nil {
-		return
-	}
-	data = make([]byte, l)
-	err = binary.Read(buf, binary.LittleEndian, data)
-	return
-}
-
-func (b ByteSlice) ReadString(buf *bytes.Buffer) (data string, err error) {
-	d, err := b.ReadSlice(buf)
-	if err != nil {
-		return
-	}
-	data = string(d)
 	return
 }
