@@ -79,6 +79,8 @@ RUN apt update
 
 # install ssl cretificates
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+
 # install previously built application
 COPY --from=builder /go/bin/* /usr/local/bin/
+
 CMD ["/usr/local/bin/teomon"]  
