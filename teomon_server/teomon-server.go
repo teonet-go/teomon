@@ -7,6 +7,7 @@ package teomon_server
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/kirill-scherba/teomon/teomon"
 	"github.com/kirill-scherba/teonet"
@@ -17,6 +18,7 @@ func New(teo *teonet.Teonet, appName, appShort, appLong, appVersion string) (mon
 	mon = new(Teomon)
 	mon.API = teo.NewAPI(appName, appShort, appLong, appVersion)
 	teo.AddReader(mon.Commands().Reader())
+	mon.CheckOnline()
 	return
 }
 
@@ -58,6 +60,7 @@ func (teo *Teomon) Commands() *Teomon {
 				metric := new(teomon.Metric)
 				metric.UnmarshalBinary(data)
 				metric.Address = c.Address()
+				metric.Online = true
 				teo.peers.Add(metric)
 				return true
 			}).SetAnswerMode(teonet.NoAnswer),
@@ -82,4 +85,16 @@ func (teo *Teomon) Commands() *Teomon {
 		}(),
 	)
 	return teo
+}
+
+// CheckOnline check peers connected now and set online parameter
+func (teo *Teomon) CheckOnline() {
+	go func() {
+		for {
+			time.Sleep(1 * time.Second)
+			teo.peers.Each(func(m *teomon.Metric) {
+				m.Online = teo.Connected(m.Address)
+			})
+		}
+	}()
 }

@@ -17,11 +17,9 @@ import (
 const (
 	appName    = "Teonet monitoring server application"
 	appShort   = "teomon"
-	appVersion = "0.2.3"
+	appVersion = "0.2.4"
 	appLong    = ""
 )
-
-// var teolog = teonet.Log()
 
 func main() {
 	teonet.Logo(appName, appVersion)
