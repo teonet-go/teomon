@@ -9,8 +9,10 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"reflect"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/kirill-scherba/bslice"
@@ -38,20 +40,20 @@ func Connect(teo TeonetInterface, address string, m Metric) {
 	for teo.ConnectTo(address) != nil {
 		time.Sleep(1 * time.Second)
 	}
-
 }
-
-type Peers []*Metric
 
 type Metric struct {
 	Address    string
 	AppName    string
 	AppShort   string
 	AppVersion string
-	Online     bool
+
+	Params *Parameters
 
 	bslice.ByteSlice
 }
+
+const OnlineParam = "online"
 
 func (m Metric) MarshalBinary() (data []byte, err error) {
 	buf := new(bytes.Buffer)
@@ -83,6 +85,131 @@ func (m *Metric) UnmarshalBinary(data []byte) (err error) {
 
 	return
 }
+
+type Parameters struct {
+	m map[string]interface{}
+	sync.RWMutex
+}
+
+// add or update parameter
+func (p *Parameters) Add(addr string, val interface{}) {
+	p.Lock()
+	defer p.Unlock()
+	p.m[addr] = val
+}
+
+// get parameter
+func (p *Parameters) Get(addr string) (val interface{}, ok bool) {
+	p.RLock()
+	defer p.RUnlock()
+	val, ok = p.m[addr]
+	return
+}
+
+type Parameter struct {
+	address string
+	name    string
+	val     interface{}
+	// t       reflect.Type
+
+	bslice.ByteSlice
+}
+
+func (p Parameter) MarshalBinary() (data []byte, err error) {
+	buf := new(bytes.Buffer)
+
+	p.WriteSlice(buf, []byte(p.address))
+	p.WriteSlice(buf, []byte(p.name))
+	t := reflect.TypeOf(p.val).String()
+	p.WriteSlice(buf, []byte(t))
+	switch t {
+	case "string":
+		p.WriteSlice(buf, []byte(p.val.(string)))
+	case "[]uint8":
+		p.WriteSlice(buf, p.val.([]byte))
+	case "int":
+		binary.Write(buf, binary.LittleEndian, int32(p.val.(int)))
+	default:
+		binary.Write(buf, binary.LittleEndian, p.val)
+	}
+
+	data = buf.Bytes()
+	return
+}
+
+func (p *Parameter) UnmarshalBinary(data []byte) (err error) {
+	buf := bytes.NewBuffer(data)
+
+	if p.address, err = p.ReadString(buf); err != nil {
+		return
+	}
+	if p.name, err = p.ReadString(buf); err != nil {
+		return
+	}
+	var t string
+	if t, err = p.ReadString(buf); err != nil {
+		return
+	}
+	fmt.Println("type:", t)
+
+	switch t {
+	case "bool":
+		var val bool
+		if err = binary.Read(buf, binary.LittleEndian, &val); err != nil {
+			return
+		}
+		p.val = val
+
+	case "int":
+		var val int32
+		if err = binary.Read(buf, binary.LittleEndian, &val); err != nil {
+			return
+		}
+		p.val = int(val)
+
+	case "int32":
+		var val int32
+		if err = binary.Read(buf, binary.LittleEndian, &val); err != nil {
+			return
+		}
+		p.val = val
+
+	case "uint32":
+		var val uint32
+		if err = binary.Read(buf, binary.LittleEndian, &val); err != nil {
+			return
+		}
+		p.val = val
+
+	case "float64":
+		var val float64
+		if err = binary.Read(buf, binary.LittleEndian, &val); err != nil {
+			return
+		}
+		p.val = val
+
+	case "string":
+		var val string
+		if val, err = p.ReadString(buf); err != nil {
+			return
+		}
+		p.val = val
+
+	case "[]uint8":
+		var val []byte
+		if val, err = p.ReadSlice(buf); err != nil {
+			return
+		}
+		p.val = val
+
+	default:
+		err = fmt.Errorf("unmarshal error - unsupported type: %s", t)
+	}
+
+	return
+}
+
+type Peers []*Metric
 
 func (p Peers) MarshalBinary() (data []byte, err error) {
 	buf := new(bytes.Buffer)
@@ -144,6 +271,8 @@ func (p *Peers) Add(metric *Metric) {
 	}
 
 	// Add new
+	metric.Params.m = make(map[string]interface{})
+	metric.Params.Add(OnlineParam, true)
 	*p = append(*p, metric)
 }
 
