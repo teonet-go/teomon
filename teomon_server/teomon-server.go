@@ -6,7 +6,6 @@
 package teomon_server
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/kirill-scherba/teomon/teomon"
@@ -44,7 +43,8 @@ func (teo *Teomon) Commands() *Teomon {
 					data = append([]byte("Hello "), data...)
 					teo.SendAnswer(cmdApi, c, data, p)
 					return true
-				}).SetAnswerMode( /* teonet.CmdAnswer | */ teonet.DataAnswer)
+				}).
+				SetAnswerMode( /* teonet.CmdAnswer | */ teonet.DataAnswer)
 			return cmdApi
 		}(),
 
@@ -56,12 +56,40 @@ func (teo *Teomon) Commands() *Teomon {
 			SetUsage("<metric MonitorMetric>"). // Usage (input parameter)
 			// Command reader (execute when command received)
 			SetReader(func(c *teonet.Channel, p *teonet.Packet, data []byte) bool {
-				fmt.Println("got metric command from", c)
-				metric := new(teomon.Metric)
-				metric.UnmarshalBinary(data)
+				teo.Log().Println("got metric command from", c)
+				metric := teomon.NewMetric()
+				err := metric.UnmarshalBinary(data)
+				if err != nil {
+					teo.Log().Println("unmarshal metric error:", err)
+					return true
+				}
 				metric.Address = c.Address()
-				metric.Params.Add("online", true)
+				metric.Params.Add(teomon.OnlineParam, true)
 				teo.peers.Add(metric)
+				return true
+			}).SetAnswerMode(teonet.NoAnswer),
+
+		// Command Parameter. Application send parameter to monitor
+		teonet.MakeAPI2().
+			SetCmd(teo.Cmd(teo.CmdNext())).           // Command number cmd = 131
+			SetName("parameter").                     // Command name
+			SetShort("send parameter to monitor").    // Short description
+			SetUsage("<parameter MonitorParameter>"). // Usage (input parameter)
+			// Command reader (execute when command received)
+			SetReader(func(c *teonet.Channel, p *teonet.Packet, data []byte) bool {
+				teo.Log().Println("got parameter command from", c)
+				param := teomon.NewParameter()
+				err := param.UnmarshalBinary(data)
+				if err != nil {
+					teo.Log().Println("unmarshal parameter error:", err)
+					return true
+				}
+				metric, ok := teo.peers.Get(param.Address)
+				if !ok {
+					teo.Log().Println("can't find peer with address:", param.Address)
+					return true
+				}
+				metric.Params.Add(param.Name, param.Value)
 				return true
 			}).SetAnswerMode(teonet.NoAnswer),
 
@@ -69,18 +97,23 @@ func (teo *Teomon) Commands() *Teomon {
 		func() teonet.APInterface {
 			var cmdApi *teonet.APIData
 			cmdApi = teonet.MakeAPI2().
-				SetCmd(teo.Cmd(teo.CmdNext())). // Command number cmd = 131
+				SetCmd(teo.Cmd(teo.CmdNext())). // Command number cmd = 132
 				SetName("list").                // Command name
 				SetShort("get list of peers").  // Short description
 				// SetUsage("<name string>").      // Usage (input parameter)
 				SetReturn("<answer []*Metric>"). // Return (output parameters)
 				// Command reader (execute when command received)
 				SetReader(func(c *teonet.Channel, p *teonet.Packet, data []byte) bool {
-					fmt.Println("got list command from", c)
-					out := teo.peers.List()
+					teo.Log().Println("got list command from", c)
+					out, err := teo.peers.MarshalBinary()
+					if err != nil {
+						teo.Log().Println("marshal to binary error:", err)
+						return true
+					}
 					teo.SendAnswer(cmdApi, c, out, p)
 					return true
-				}).SetAnswerMode( /* teonet.CmdAnswer | */ teonet.DataAnswer)
+				}).
+				SetAnswerMode( /* teonet.CmdAnswer | */ teonet.DataAnswer)
 			return cmdApi
 		}(),
 	)

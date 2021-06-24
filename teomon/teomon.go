@@ -30,7 +30,7 @@ type TeonetInterface interface {
 
 // Connect to monitor peer and send metric
 func Connect(teo TeonetInterface, address string, m Metric) {
-
+	m.NewParams()
 	teo.WhenConnectedTo(address, func() {
 		data, _ := m.MarshalBinary()
 		data = append([]byte{CmdMetric}, data...)
@@ -55,6 +55,16 @@ type Metric struct {
 
 const OnlineParam = "online"
 
+func NewMetric() (m *Metric) {
+	m = new(Metric)
+	m.NewParams()
+	return
+}
+
+func (m *Metric) NewParams() {
+	m.Params = &Parameters{m: make(map[string]interface{})}
+}
+
 func (m Metric) MarshalBinary() (data []byte, err error) {
 	buf := new(bytes.Buffer)
 
@@ -62,6 +72,20 @@ func (m Metric) MarshalBinary() (data []byte, err error) {
 	m.WriteSlice(buf, []byte(m.AppName))
 	m.WriteSlice(buf, []byte(m.AppShort))
 	m.WriteSlice(buf, []byte(m.AppVersion))
+
+	if err = binary.Write(buf, binary.LittleEndian, uint16(len(m.Params.m))); err != nil {
+		return
+	}
+	m.Params.RLock()
+	defer m.Params.RUnlock()
+	for name, val := range m.Params.m {
+		p := Parameter{Address: "", Name: name, Value: val}
+		data, err := p.MarshalBinary()
+		if err != nil {
+			return nil, err
+		}
+		m.WriteSlice(buf, data)
+	}
 
 	data = buf.Bytes()
 	return
@@ -83,6 +107,20 @@ func (m *Metric) UnmarshalBinary(data []byte) (err error) {
 		return
 	}
 
+	var l uint16
+	if err = binary.Read(buf, binary.LittleEndian, &l); err != nil {
+		return
+	}
+	for i := 0; i < int(l); i++ {
+		p := Parameter{}
+		data, err := m.ReadSlice(buf)
+		if err != nil {
+			return err
+		}
+		p.UnmarshalBinary(data)
+		m.Params.Add(p.Name, p.Value)
+	}
+
 	return
 }
 
@@ -92,25 +130,29 @@ type Parameters struct {
 }
 
 // add or update parameter
-func (p *Parameters) Add(addr string, val interface{}) {
+func (p *Parameters) Add(name string, val interface{}) {
 	p.Lock()
 	defer p.Unlock()
-	p.m[addr] = val
+	p.m[name] = val
 }
 
 // get parameter
-func (p *Parameters) Get(addr string) (val interface{}, ok bool) {
+func (p *Parameters) Get(name string) (val interface{}, ok bool) {
 	p.RLock()
 	defer p.RUnlock()
-	val, ok = p.m[addr]
+	val, ok = p.m[name]
+	return
+}
+
+func NewParameter() (p *Parameter) {
+	p = new(Parameter)
 	return
 }
 
 type Parameter struct {
-	address string
-	name    string
-	val     interface{}
-	// t       reflect.Type
+	Address string
+	Name    string
+	Value   interface{}
 
 	bslice.ByteSlice
 }
@@ -118,19 +160,19 @@ type Parameter struct {
 func (p Parameter) MarshalBinary() (data []byte, err error) {
 	buf := new(bytes.Buffer)
 
-	p.WriteSlice(buf, []byte(p.address))
-	p.WriteSlice(buf, []byte(p.name))
-	t := reflect.TypeOf(p.val).String()
+	p.WriteSlice(buf, []byte(p.Address))
+	p.WriteSlice(buf, []byte(p.Name))
+	t := reflect.TypeOf(p.Value).String()
 	p.WriteSlice(buf, []byte(t))
 	switch t {
 	case "string":
-		p.WriteSlice(buf, []byte(p.val.(string)))
+		p.WriteSlice(buf, []byte(p.Value.(string)))
 	case "[]uint8":
-		p.WriteSlice(buf, p.val.([]byte))
+		p.WriteSlice(buf, p.Value.([]byte))
 	case "int":
-		binary.Write(buf, binary.LittleEndian, int32(p.val.(int)))
+		binary.Write(buf, binary.LittleEndian, int32(p.Value.(int)))
 	default:
-		binary.Write(buf, binary.LittleEndian, p.val)
+		binary.Write(buf, binary.LittleEndian, p.Value)
 	}
 
 	data = buf.Bytes()
@@ -140,17 +182,17 @@ func (p Parameter) MarshalBinary() (data []byte, err error) {
 func (p *Parameter) UnmarshalBinary(data []byte) (err error) {
 	buf := bytes.NewBuffer(data)
 
-	if p.address, err = p.ReadString(buf); err != nil {
+	if p.Address, err = p.ReadString(buf); err != nil {
 		return
 	}
-	if p.name, err = p.ReadString(buf); err != nil {
+	if p.Name, err = p.ReadString(buf); err != nil {
 		return
 	}
 	var t string
 	if t, err = p.ReadString(buf); err != nil {
 		return
 	}
-	fmt.Println("type:", t)
+	// fmt.Println("type:", t)
 
 	switch t {
 	case "bool":
@@ -158,49 +200,49 @@ func (p *Parameter) UnmarshalBinary(data []byte) (err error) {
 		if err = binary.Read(buf, binary.LittleEndian, &val); err != nil {
 			return
 		}
-		p.val = val
+		p.Value = val
 
 	case "int":
 		var val int32
 		if err = binary.Read(buf, binary.LittleEndian, &val); err != nil {
 			return
 		}
-		p.val = int(val)
+		p.Value = int(val)
 
 	case "int32":
 		var val int32
 		if err = binary.Read(buf, binary.LittleEndian, &val); err != nil {
 			return
 		}
-		p.val = val
+		p.Value = val
 
 	case "uint32":
 		var val uint32
 		if err = binary.Read(buf, binary.LittleEndian, &val); err != nil {
 			return
 		}
-		p.val = val
+		p.Value = val
 
 	case "float64":
 		var val float64
 		if err = binary.Read(buf, binary.LittleEndian, &val); err != nil {
 			return
 		}
-		p.val = val
+		p.Value = val
 
 	case "string":
 		var val string
 		if val, err = p.ReadString(buf); err != nil {
 			return
 		}
-		p.val = val
+		p.Value = val
 
 	case "[]uint8":
 		var val []byte
 		if val, err = p.ReadSlice(buf); err != nil {
 			return
 		}
-		p.val = val
+		p.Value = val
 
 	default:
 		err = fmt.Errorf("unmarshal error - unsupported type: %s", t)
@@ -234,7 +276,7 @@ func (p *Peers) UnmarshalBinary(data []byte) (err error) {
 		return
 	}
 	for i := 0; i < int(l); i++ {
-		var m Metric
+		m := NewMetric()
 		var d []byte
 		d, err = m.ReadSlice(buf)
 		if err != nil {
@@ -244,7 +286,7 @@ func (p *Peers) UnmarshalBinary(data []byte) (err error) {
 		if err != nil {
 			return
 		}
-		*p = append(*p, &m)
+		*p = append(*p, m)
 	}
 
 	return
@@ -276,9 +318,9 @@ func (p *Peers) Add(metric *Metric) {
 	*p = append(*p, metric)
 }
 
-// List of metrics to data
-func (p Peers) List() (data []byte) {
-	data, _ = p.MarshalBinary()
+// Get peer metric by address
+func (p Peers) Get(address string) (m *Metric, ok bool) {
+	m, _, ok = p.find(address)
 	return
 }
 
@@ -320,10 +362,12 @@ func (p Peers) String() (str string) {
 	str += line
 
 	for _, m := range p {
-		str += fmt.Sprintf(" %-*s | %-*s | %-*s |\n",
+		_, online := m.Params.Get(OnlineParam)
+		str += fmt.Sprintf(" %-*s | %-*s | %-*s | %v\n",
 			l.appShort, m.AppShort,
 			l.appVersion, m.AppVersion,
 			l.address, m.Address,
+			online,
 		)
 	}
 	str += line[:len(line)-1]

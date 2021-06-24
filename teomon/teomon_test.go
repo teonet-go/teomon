@@ -10,7 +10,7 @@ func TestParameter(t *testing.T) {
 	var par Parameter
 
 	// Value type bool
-	par = Parameter{address: "aaadddrrr", name: "online", val: true}
+	par = Parameter{Address: "aaadddrrr", Name: "online", Value: true}
 
 	data, err := par.MarshalBinary()
 	if err != nil {
@@ -28,7 +28,7 @@ func TestParameter(t *testing.T) {
 	fmt.Println("UnmarshalBinary:", par)
 
 	// Value type string
-	par = Parameter{address: "aaadddrrr", name: "online", val: "string_value"}
+	par = Parameter{Address: "aaadddrrr", Name: "online", Value: "string_value"}
 
 	data, err = par.MarshalBinary()
 	if err != nil {
@@ -46,7 +46,7 @@ func TestParameter(t *testing.T) {
 	fmt.Println("UnmarshalBinary:", par)
 
 	// Value type uint32
-	par = Parameter{address: "aaadddrrr", name: "online", val: uint32(121314)}
+	par = Parameter{Address: "aaadddrrr", Name: "online", Value: uint32(121314)}
 
 	data, err = par.MarshalBinary()
 	if err != nil {
@@ -64,7 +64,7 @@ func TestParameter(t *testing.T) {
 	fmt.Println("UnmarshalBinary:", par)
 
 	// Value type int32
-	par = Parameter{address: "aaadddrrr", name: "online", val: int32(-121314)}
+	par = Parameter{Address: "aaadddrrr", Name: "online", Value: int32(-121314)}
 
 	data, err = par.MarshalBinary()
 	if err != nil {
@@ -82,7 +82,7 @@ func TestParameter(t *testing.T) {
 	fmt.Println("UnmarshalBinary:", par)
 
 	// Value type int
-	par = Parameter{address: "aaadddrrr", name: "online", val: -12}
+	par = Parameter{Address: "aaadddrrr", Name: "online", Value: -12}
 
 	data, err = par.MarshalBinary()
 	if err != nil {
@@ -100,7 +100,7 @@ func TestParameter(t *testing.T) {
 	fmt.Println("UnmarshalBinary:", par)
 
 	// Value type []byte
-	par = Parameter{address: "aaadddrrr", name: "online", val: []byte("Hello!")}
+	par = Parameter{Address: "aaadddrrr", Name: "online", Value: []byte("Hello!")}
 
 	data, err = par.MarshalBinary()
 	if err != nil {
@@ -118,7 +118,7 @@ func TestParameter(t *testing.T) {
 	fmt.Println("UnmarshalBinary:", par)
 
 	// Value type float
-	par = Parameter{address: "aaadddrrr", name: "online", val: 3.14}
+	par = Parameter{Address: "aaadddrrr", Name: "online", Value: 3.14}
 
 	data, err = par.MarshalBinary()
 	if err != nil {
@@ -136,7 +136,7 @@ func TestParameter(t *testing.T) {
 	fmt.Println("UnmarshalBinary:", par)
 
 	// Value type unknown
-	par = Parameter{address: "aaadddrrr", name: "online", val: struct{}{}}
+	par = Parameter{Address: "aaadddrrr", Name: "online", Value: struct{}{}}
 
 	data, err = par.MarshalBinary()
 	if err != nil {
@@ -148,10 +148,56 @@ func TestParameter(t *testing.T) {
 	par = Parameter{}
 	err = par.UnmarshalBinary(data)
 	if err == nil {
-		err = fmt.Errorf("sucessfully unmarshal not supported type %T", par.val)
+		err = fmt.Errorf("sucessfully unmarshal not supported type %T", par.Value)
 		t.Error(err)
 		return
 	}
 	fmt.Println("UnmarshalBinary:", err, par)
 
+}
+
+func TestMetric(t *testing.T) {
+
+	m := Metric{
+		Address:    "qUzILis",
+		AppShort:   "test-metric",
+		AppVersion: "0.0.1",
+		Params: &Parameters{
+			m: make(map[string]interface{}),
+		},
+	}
+	m.Params.Add(OnlineParam, true)
+	m.Params.Add("num_users", 234)
+
+	data, err := m.MarshalBinary()
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	fmt.Println("marshalled data:", data)
+
+	mout := Metric{
+		Params: &Parameters{
+			m: make(map[string]interface{}),
+		},
+	}
+	err = mout.UnmarshalBinary(data)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if m.Address != mout.Address || m.AppName != mout.AppName || m.AppShort != mout.AppShort || m.AppVersion != mout.AppVersion {
+		t.Error("wrong unmarshal metric")
+		return
+	}
+	if val, ok := mout.Params.Get(OnlineParam); !ok || val != true {
+		t.Error("wrong unmarshal param online")
+		return
+	}
+	if val, ok := mout.Params.Get("num_users"); !ok || val != 234 {
+		t.Error("wrong unmarshal param num_users")
+		return
+	}
+
+	fmt.Println("unmarshalled metric:", mout)
 }
