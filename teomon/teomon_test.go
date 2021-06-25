@@ -10,7 +10,7 @@ func TestParameter(t *testing.T) {
 	var par Parameter
 
 	// Value type bool
-	par = Parameter{Address: "aaadddrrr", Name: "online", Value: true}
+	par = Parameter{Name: "online", Value: true}
 
 	data, err := par.MarshalBinary()
 	if err != nil {
@@ -28,7 +28,7 @@ func TestParameter(t *testing.T) {
 	fmt.Println("UnmarshalBinary:", par)
 
 	// Value type string
-	par = Parameter{Address: "aaadddrrr", Name: "online", Value: "string_value"}
+	par = Parameter{Name: "online", Value: "string_value"}
 
 	data, err = par.MarshalBinary()
 	if err != nil {
@@ -46,7 +46,7 @@ func TestParameter(t *testing.T) {
 	fmt.Println("UnmarshalBinary:", par)
 
 	// Value type uint32
-	par = Parameter{Address: "aaadddrrr", Name: "online", Value: uint32(121314)}
+	par = Parameter{Name: "online", Value: uint32(121314)}
 
 	data, err = par.MarshalBinary()
 	if err != nil {
@@ -64,7 +64,7 @@ func TestParameter(t *testing.T) {
 	fmt.Println("UnmarshalBinary:", par)
 
 	// Value type int32
-	par = Parameter{Address: "aaadddrrr", Name: "online", Value: int32(-121314)}
+	par = Parameter{Name: "online", Value: int32(-121314)}
 
 	data, err = par.MarshalBinary()
 	if err != nil {
@@ -82,7 +82,7 @@ func TestParameter(t *testing.T) {
 	fmt.Println("UnmarshalBinary:", par)
 
 	// Value type int
-	par = Parameter{Address: "aaadddrrr", Name: "online", Value: -12}
+	par = Parameter{Name: "online", Value: -12}
 
 	data, err = par.MarshalBinary()
 	if err != nil {
@@ -100,7 +100,7 @@ func TestParameter(t *testing.T) {
 	fmt.Println("UnmarshalBinary:", par)
 
 	// Value type []byte
-	par = Parameter{Address: "aaadddrrr", Name: "online", Value: []byte("Hello!")}
+	par = Parameter{Name: "online", Value: []byte("Hello!")}
 
 	data, err = par.MarshalBinary()
 	if err != nil {
@@ -118,7 +118,7 @@ func TestParameter(t *testing.T) {
 	fmt.Println("UnmarshalBinary:", par)
 
 	// Value type float
-	par = Parameter{Address: "aaadddrrr", Name: "online", Value: 3.14}
+	par = Parameter{Name: "online", Value: 3.14}
 
 	data, err = par.MarshalBinary()
 	if err != nil {
@@ -136,7 +136,7 @@ func TestParameter(t *testing.T) {
 	fmt.Println("UnmarshalBinary:", par)
 
 	// Value type unknown
-	par = Parameter{Address: "aaadddrrr", Name: "online", Value: struct{}{}}
+	par = Parameter{Name: "online", Value: struct{}{}}
 
 	data, err = par.MarshalBinary()
 	if err != nil {

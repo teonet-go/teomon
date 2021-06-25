@@ -19,13 +19,15 @@ import (
 )
 
 const (
-	CmdMetric byte = 130
+	CmdMetric    byte = 130
+	CmdParameter byte = 131
 )
 
 type TeonetInterface interface {
 	WhenConnectedTo(address string, f func())
 	ConnectTo(address string, attr ...interface{}) error
 	SendTo(address string, data []byte, attr ...interface{}) (uint32, error)
+	Address() string
 }
 
 // Connect to monitor peer and send metric
@@ -40,6 +42,15 @@ func Connect(teo TeonetInterface, address string, m Metric) {
 	for teo.ConnectTo(address) != nil {
 		time.Sleep(1 * time.Second)
 	}
+}
+
+func SendParam(teo TeonetInterface, address string, name string, value interface{}) {
+	p := NewParameter()
+	p.Name = name
+	p.Value = value
+	data, _ := p.MarshalBinary()
+	data = append([]byte{CmdParameter}, data...)
+	teo.SendTo(address, data)
 }
 
 type Metric struct {
@@ -79,7 +90,7 @@ func (m Metric) MarshalBinary() (data []byte, err error) {
 	m.Params.RLock()
 	defer m.Params.RUnlock()
 	for name, val := range m.Params.m {
-		p := Parameter{Address: "", Name: name, Value: val}
+		p := Parameter{Name: name, Value: val}
 		data, err := p.MarshalBinary()
 		if err != nil {
 			return nil, err
@@ -150,9 +161,8 @@ func NewParameter() (p *Parameter) {
 }
 
 type Parameter struct {
-	Address string
-	Name    string
-	Value   interface{}
+	Name  string
+	Value interface{}
 
 	bslice.ByteSlice
 }
@@ -160,7 +170,6 @@ type Parameter struct {
 func (p Parameter) MarshalBinary() (data []byte, err error) {
 	buf := new(bytes.Buffer)
 
-	p.WriteSlice(buf, []byte(p.Address))
 	p.WriteSlice(buf, []byte(p.Name))
 	t := reflect.TypeOf(p.Value).String()
 	p.WriteSlice(buf, []byte(t))
@@ -182,9 +191,6 @@ func (p Parameter) MarshalBinary() (data []byte, err error) {
 func (p *Parameter) UnmarshalBinary(data []byte) (err error) {
 	buf := bytes.NewBuffer(data)
 
-	if p.Address, err = p.ReadString(buf); err != nil {
-		return
-	}
 	if p.Name, err = p.ReadString(buf); err != nil {
 		return
 	}

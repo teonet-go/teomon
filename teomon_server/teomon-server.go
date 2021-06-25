@@ -71,7 +71,7 @@ func (teo *Teomon) Commands() *Teomon {
 
 		// Command Parameter. Application send parameter to monitor
 		teonet.MakeAPI2().
-			SetCmd(teo.Cmd(teo.CmdNext())).           // Command number cmd = 131
+			SetCmd(teo.Cmd(teomon.CmdParameter)).     // Command number cmd = 131
 			SetName("parameter").                     // Command name
 			SetShort("send parameter to monitor").    // Short description
 			SetUsage("<parameter MonitorParameter>"). // Usage (input parameter)
@@ -84,9 +84,9 @@ func (teo *Teomon) Commands() *Teomon {
 					teo.Log().Println("unmarshal parameter error:", err)
 					return true
 				}
-				metric, ok := teo.peers.Get(param.Address)
+				metric, ok := teo.peers.Get(c.Address())
 				if !ok {
-					teo.Log().Println("can't find peer with address:", param.Address)
+					teo.Log().Println("can't find peer with address:", c.Address())
 					return true
 				}
 				metric.Params.Add(param.Name, param.Value)
