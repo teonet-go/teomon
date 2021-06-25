@@ -44,6 +44,7 @@ func Connect(teo TeonetInterface, address string, m Metric) {
 	}
 }
 
+// SendParam send parameter to monitor
 func SendParam(teo TeonetInterface, address string, name string, value interface{}) {
 	p := NewParameter()
 	p.Name = name
@@ -153,6 +154,15 @@ func (p *Parameters) Get(name string) (val interface{}, ok bool) {
 	defer p.RUnlock()
 	val, ok = p.m[name]
 	return
+}
+
+// Each execute callback for each Parameter
+func (p *Parameters) Each(f func(name string, value interface{})) {
+	p.RLock()
+	defer p.RUnlock()
+	for n, v := range p.m {
+		f(n, v)
+	}
 }
 
 func NewParameter() (p *Parameter) {
@@ -375,6 +385,12 @@ func (p Peers) String() (str string) {
 			l.address, m.Address,
 			online,
 		)
+		m.Params.Each(func(name string, value interface{}) {
+			if name == OnlineParam {
+				return
+			}
+			str += fmt.Sprintf("   %s: %v\n", name, value)
+		})
 	}
 	str += line[:len(line)-1]
 
