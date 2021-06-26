@@ -166,7 +166,7 @@ func TestMetric(t *testing.T) {
 			m: make(map[string]interface{}),
 		},
 	}
-	m.Params.Add(OnlineParam, true)
+	m.Params.Add(ParamOnline, true)
 	m.Params.Add("num_users", 234)
 
 	data, err := m.MarshalBinary()
@@ -190,7 +190,7 @@ func TestMetric(t *testing.T) {
 		t.Error("wrong unmarshal metric")
 		return
 	}
-	if val, ok := mout.Params.Get(OnlineParam); !ok || val != true {
+	if val, ok := mout.Params.Get(ParamOnline); !ok || val != true {
 		t.Error("wrong unmarshal param online")
 		return
 	}

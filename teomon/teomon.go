@@ -24,34 +24,63 @@ const (
 )
 
 type TeonetInterface interface {
+	WhenConnectedDisconnected(f func())
 	WhenConnectedTo(address string, f func())
 	ConnectTo(address string, attr ...interface{}) error
 	SendTo(address string, data []byte, attr ...interface{}) (uint32, error)
 	Address() string
+	NumPeers() int
 }
 
 // Connect to monitor peer and send metric
-func Connect(teo TeonetInterface, address string, m Metric) {
-	m.NewParams()
+func Connect(teo TeonetInterface, address string, m Metric, t ...TeonetInterface) (mon *Monitor) {
+
+	mon = new(Monitor)
+	mon.teo = teo
+	mon.address = address
+
+	// Which teonet check for connected: the same or from t parameter
+	var teocheck = teo
+	if len(t) > 0 {
+		teocheck = t[0]
+	}
+
+	// When connected to monitor
 	teo.WhenConnectedTo(address, func() {
+		m.NewParams()
 		data, _ := m.MarshalBinary()
 		data = append([]byte{CmdMetric}, data...)
 		teo.SendTo(address, data)
+		mon.SendParam(ParamPeers, teocheck.NumPeers())
 	})
 
+	// Connect to monitor
 	for teo.ConnectTo(address) != nil {
 		time.Sleep(1 * time.Second)
 	}
+
+	// Process connected/disconnected events and send Parameter "peers" to monitor
+	teocheck.WhenConnectedDisconnected(func() {
+		fmt.Println("SendParam", ParamPeers, teocheck.NumPeers())
+		mon.SendParam(ParamPeers, teocheck.NumPeers())
+	})
+
+	return
+}
+
+type Monitor struct {
+	teo     TeonetInterface
+	address string
 }
 
 // SendParam send parameter to monitor
-func SendParam(teo TeonetInterface, address string, name string, value interface{}) {
+func (mon Monitor) SendParam(name string, value interface{}) {
 	p := NewParameter()
 	p.Name = name
 	p.Value = value
 	data, _ := p.MarshalBinary()
 	data = append([]byte{CmdParameter}, data...)
-	teo.SendTo(address, data)
+	mon.teo.SendTo(mon.address, data)
 }
 
 type Metric struct {
@@ -65,7 +94,10 @@ type Metric struct {
 	bslice.ByteSlice
 }
 
-const OnlineParam = "online"
+const (
+	ParamOnline = "online"
+	ParamPeers  = "peers"
+)
 
 func NewMetric() (m *Metric) {
 	m = new(Metric)
@@ -330,7 +362,7 @@ func (p *Peers) Add(metric *Metric) {
 
 	// Add new
 	metric.Params.m = make(map[string]interface{})
-	metric.Params.Add(OnlineParam, true)
+	metric.Params.Add(ParamOnline, true)
 	*p = append(*p, metric)
 }
 
@@ -356,6 +388,7 @@ func (p Peers) String() (str string) {
 		appVersion int
 		address    int
 		online     int
+		peers      int
 	}
 	for _, m := range p {
 		if len := len(m.AppShort); len > l.appShort {
@@ -369,28 +402,37 @@ func (p Peers) String() (str string) {
 		}
 	}
 	l.online = 6
+	l.peers = 5
 
-	line := strings.Repeat("-", l.appShort+l.appVersion+l.address+l.online+(4-1)*3+2) + "\n"
+	line := strings.Repeat("-", l.appShort+l.appVersion+l.address+l.online+l.peers+(5-1)*3+2) + "\n"
 
 	str += line
-	str += fmt.Sprintf(" %-*s | %-*s | %-*s | online\n",
+	str += fmt.Sprintf(" %-*s | %-*s | %-*s | online | peers \n",
 		l.appShort, "name", l.appVersion, "ver", l.address, "address")
 	str += line
 
 	for _, m := range p {
-		_, online := m.Params.Get(OnlineParam)
-		str += fmt.Sprintf(" %-*s | %-*s | %-*s | %v\n",
+		online, _ := m.Params.Get(ParamOnline)
+		peers, _ := m.Params.Get(ParamPeers)
+		str += fmt.Sprintf(" %-*s | %-*s | %-*s | %-*v | %*v\n",
 			l.appShort, m.AppShort,
 			l.appVersion, m.AppVersion,
 			l.address, m.Address,
-			online,
+			l.online, online,
+			l.peers, peers,
 		)
+		var numParams = 0
 		m.Params.Each(func(name string, value interface{}) {
-			if name == OnlineParam {
+			if name == ParamOnline || name == ParamPeers {
 				return
 			}
 			str += fmt.Sprintf("   %s: %v\n", name, value)
+			numParams++
 		})
+		if numParams > 0 {
+			str += "\n"
+		}
+		// str += line
 	}
 	str += line[:len(line)-1]
 

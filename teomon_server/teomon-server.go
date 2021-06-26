@@ -64,7 +64,7 @@ func (teo *Teomon) Commands() *Teomon {
 					return true
 				}
 				metric.Address = c.Address()
-				metric.Params.Add(teomon.OnlineParam, true)
+				metric.Params.Add(teomon.ParamOnline, true)
 				teo.peers.Add(metric)
 				return true
 			}).SetAnswerMode(teonet.NoAnswer),
@@ -127,7 +127,7 @@ func (teo *Teomon) CheckOnline() {
 			time.Sleep(1 * time.Second)
 			teo.peers.Each(func(m *teomon.Metric) {
 				online := teo.Connected(m.Address)
-				m.Params.Add(teomon.OnlineParam, online)
+				m.Params.Add(teomon.ParamOnline, online)
 			})
 		}
 	}()
