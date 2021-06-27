@@ -84,11 +84,12 @@ func (mon Monitor) SendParam(name string, value interface{}) {
 }
 
 type Metric struct {
-	Address    string
-	AppName    string
-	AppShort   string
-	AppVersion string
-	TeoVersion string
+	Address      string
+	AppName      string
+	AppShort     string
+	AppVersion   string
+	TeoVersion   string
+	AppStartTime time.Time
 
 	Params *Parameters
 
@@ -118,6 +119,12 @@ func (m Metric) MarshalBinary() (data []byte, err error) {
 	m.WriteSlice(buf, []byte(m.AppShort))
 	m.WriteSlice(buf, []byte(m.AppVersion))
 	m.WriteSlice(buf, []byte(m.TeoVersion))
+
+	d, err := m.AppStartTime.MarshalBinary()
+	if err != nil {
+		return
+	}
+	m.WriteSlice(buf, d)
 
 	if err = binary.Write(buf, binary.LittleEndian, uint16(len(m.Params.m))); err != nil {
 		return
@@ -153,6 +160,14 @@ func (m *Metric) UnmarshalBinary(data []byte) (err error) {
 		return
 	}
 	if m.TeoVersion, err = m.ReadString(buf); err != nil {
+		return
+	}
+
+	d, err := m.ReadSlice(buf)
+	if err != nil {
+		return
+	}
+	if err = m.AppStartTime.UnmarshalBinary(d); err != nil {
 		return
 	}
 
@@ -395,7 +410,13 @@ func (p Peers) String() (str string) {
 		address    int
 		online     int
 		peers      int
+		start      int
 	}
+
+	timeFormat := "2006-01-02 15:04:05"
+	currentTime := time.Now()
+	start := fmt.Sprint(currentTime.Format(timeFormat))
+
 	for _, m := range p {
 		if len := len(m.AppShort); len > l.appShort {
 			l.appShort = len
@@ -409,27 +430,37 @@ func (p Peers) String() (str string) {
 		if len := len(m.Address); len > l.address {
 			l.address = len
 		}
+		if len := len(start); len > l.start {
+			l.start = len
+		}
 	}
 	l.online = 6
 	l.peers = 5
 
-	line := strings.Repeat("-", l.appShort+l.appVersion+l.teoVersion+l.address+l.online+l.peers+(6-1)*3+2) + "\n"
+	numFields := reflect.TypeOf(l).NumField()
+
+	line := strings.Repeat("-",
+		l.appShort+l.appVersion+l.teoVersion+l.address+l.online+l.peers+l.start+
+			(numFields-1)*3+2,
+	) + "\n"
 
 	str += line
-	str += fmt.Sprintf(" %-*s | %-*s | %-*s | %-*s | online | peers \n",
+	str += fmt.Sprintf(" %-*s | %-*s | %-*s | %-*s | online | peers | start time \n",
 		l.appShort, "name", l.appVersion, "ver", l.teoVersion, "teo", l.address, "address")
 	str += line
 
 	for _, m := range p {
 		online, _ := m.Params.Get(ParamOnline)
 		peers, _ := m.Params.Get(ParamPeers)
-		str += fmt.Sprintf(" %-*s | %-*s | %-*s | %-*s | %-*v | %*v\n",
+		start := fmt.Sprint(currentTime.Format(timeFormat))
+		str += fmt.Sprintf(" %-*s | %-*s | %-*s | %-*s | %-*v | %*v | %*s \n",
 			l.appShort, m.AppShort,
 			l.appVersion, m.AppVersion,
 			l.teoVersion, m.TeoVersion,
 			l.address, m.Address,
 			l.online, online,
 			l.peers, peers,
+			l.start, start,
 		)
 		var numParams = 0
 		m.Params.Each(func(name string, value interface{}) {
