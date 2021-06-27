@@ -88,6 +88,7 @@ type Metric struct {
 	AppName    string
 	AppShort   string
 	AppVersion string
+	TeoVersion string
 
 	Params *Parameters
 
@@ -116,6 +117,7 @@ func (m Metric) MarshalBinary() (data []byte, err error) {
 	m.WriteSlice(buf, []byte(m.AppName))
 	m.WriteSlice(buf, []byte(m.AppShort))
 	m.WriteSlice(buf, []byte(m.AppVersion))
+	m.WriteSlice(buf, []byte(m.TeoVersion))
 
 	if err = binary.Write(buf, binary.LittleEndian, uint16(len(m.Params.m))); err != nil {
 		return
@@ -148,6 +150,9 @@ func (m *Metric) UnmarshalBinary(data []byte) (err error) {
 		return
 	}
 	if m.AppVersion, err = m.ReadString(buf); err != nil {
+		return
+	}
+	if m.TeoVersion, err = m.ReadString(buf); err != nil {
 		return
 	}
 
@@ -386,6 +391,7 @@ func (p Peers) String() (str string) {
 	var l struct {
 		appShort   int
 		appVersion int
+		teoVersion int
 		address    int
 		online     int
 		peers      int
@@ -397,6 +403,9 @@ func (p Peers) String() (str string) {
 		if len := len(m.AppVersion); len > l.appVersion {
 			l.appVersion = len
 		}
+		if len := len(m.TeoVersion); len > l.teoVersion {
+			l.teoVersion = len
+		}
 		if len := len(m.Address); len > l.address {
 			l.address = len
 		}
@@ -404,19 +413,20 @@ func (p Peers) String() (str string) {
 	l.online = 6
 	l.peers = 5
 
-	line := strings.Repeat("-", l.appShort+l.appVersion+l.address+l.online+l.peers+(5-1)*3+2) + "\n"
+	line := strings.Repeat("-", l.appShort+l.appVersion+l.teoVersion+l.address+l.online+l.peers+(6-1)*3+2) + "\n"
 
 	str += line
-	str += fmt.Sprintf(" %-*s | %-*s | %-*s | online | peers \n",
-		l.appShort, "name", l.appVersion, "ver", l.address, "address")
+	str += fmt.Sprintf(" %-*s | %-*s | %-*s | %-*s | online | peers \n",
+		l.appShort, "name", l.appVersion, "ver", l.teoVersion, "teo", l.address, "address")
 	str += line
 
 	for _, m := range p {
 		online, _ := m.Params.Get(ParamOnline)
 		peers, _ := m.Params.Get(ParamPeers)
-		str += fmt.Sprintf(" %-*s | %-*s | %-*s | %-*v | %*v\n",
+		str += fmt.Sprintf(" %-*s | %-*s | %-*s | %-*s | %-*v | %*v\n",
 			l.appShort, m.AppShort,
 			l.appVersion, m.AppVersion,
+			l.teoVersion, m.TeoVersion,
 			l.address, m.Address,
 			l.online, online,
 			l.peers, peers,
