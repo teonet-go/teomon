@@ -116,6 +116,30 @@ func (teo *Teomon) Commands() *Teomon {
 				SetAnswerMode( /* teonet.CmdAnswer | */ teonet.DataAnswer)
 			return cmdApi
 		}(),
+
+		// Command Parameter. Application send parameter to monitor
+		teonet.MakeAPI2().
+			SetCmd(teo.Cmd(teo.CmdNext())). // Command number cmd = 133
+			SetName("save").                // Command name
+			SetShort("save new peers").     // Short description
+			// SetUsage("<parameter MonitorParameter>"). // Usage (input parameter)
+			// Command reader (execute when command received)
+			SetReader(func(c *teonet.Channel, p *teonet.Packet, data []byte) bool {
+				teo.Log().Println("got save command from", c)
+				// param := teomon.NewParameter()
+				// err := param.UnmarshalBinary(data)
+				// if err != nil {
+				// 	teo.Log().Println("unmarshal parameter error:", err)
+				// 	return true
+				// }
+				// metric, ok := teo.peers.Get(c.Address())
+				// if !ok {
+				// 	teo.Log().Println("can't find peer with address:", c.Address())
+				// 	return true
+				// }
+				// metric.Params.Add(param.Name, param.Value)
+				return true
+			}).SetAnswerMode(teonet.NoAnswer),
 	)
 	return teo
 }

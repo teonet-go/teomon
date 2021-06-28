@@ -61,7 +61,6 @@ func Connect(teo TeonetInterface, address string, m Metric, t ...TeonetInterface
 
 	// Process connected/disconnected events and send Parameter "peers" to monitor
 	teocheck.WhenConnectedDisconnected(func() {
-		fmt.Println("SendParam", ParamPeers, teocheck.NumPeers())
 		mon.SendParam(ParamPeers, teocheck.NumPeers())
 	})
 
@@ -414,8 +413,6 @@ func (p Peers) String() (str string) {
 	}
 
 	timeFormat := "2006-01-02 15:04:05"
-	currentTime := time.Now()
-	start := fmt.Sprint(currentTime.Format(timeFormat))
 
 	for _, m := range p {
 		if len := len(m.AppShort); len > l.appShort {
@@ -430,6 +427,7 @@ func (p Peers) String() (str string) {
 		if len := len(m.Address); len > l.address {
 			l.address = len
 		}
+		start := fmt.Sprint(m.AppStartTime.Format(timeFormat))
 		if len := len(start); len > l.start {
 			l.start = len
 		}
@@ -441,19 +439,20 @@ func (p Peers) String() (str string) {
 
 	line := strings.Repeat("-",
 		l.appShort+l.appVersion+l.teoVersion+l.address+l.online+l.peers+l.start+
-			(numFields-1)*3+2,
+			5+(numFields-1)*3+2,
 	) + "\n"
 
 	str += line
-	str += fmt.Sprintf(" %-*s | %-*s | %-*s | %-*s | online | peers | start time \n",
+	str += fmt.Sprintf("  # | %-*s | %-*s | %-*s | %-*s | online | peers | start time \n",
 		l.appShort, "name", l.appVersion, "ver", l.teoVersion, "teo", l.address, "address")
 	str += line
 
-	for _, m := range p {
+	for i, m := range p {
 		online, _ := m.Params.Get(ParamOnline)
 		peers, _ := m.Params.Get(ParamPeers)
-		start := fmt.Sprint(currentTime.Format(timeFormat))
-		str += fmt.Sprintf(" %-*s | %-*s | %-*s | %-*s | %-*v | %*v | %*s \n",
+		start := fmt.Sprint(m.AppStartTime.Format(timeFormat))
+		str += fmt.Sprintf(" %2d | %-*s | %-*s | %-*s | %-*s | %-*v | %*v | %*s \n",
+			i+1,
 			l.appShort, m.AppShort,
 			l.appVersion, m.AppVersion,
 			l.teoVersion, m.TeoVersion,
@@ -473,7 +472,6 @@ func (p Peers) String() (str string) {
 		if numParams > 0 {
 			str += "\n"
 		}
-		// str += line
 	}
 	str += line[:len(line)-1]
 

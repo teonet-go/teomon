@@ -16,14 +16,15 @@
 
   - name: build and publish docker image to registry
     shell: |
+           cd $HOME/go/src/github.com/kirill-scherba/{{ name }}
            echo Build docker image
-           docker build -t teomon -f ./Dockerfile ../.
+           docker build -t {{ name }} -f ./Dockerfile ../.
            echo ""
-           docker tag teomon docker.pkg.github.com/kirill-scherba/teonet-go/teomon:{{ version }}
-           docker push docker.pkg.github.com/kirill-scherba/teonet-go/teomon:{{ version }}
+           docker tag {{ name }} docker.pkg.github.com/kirill-scherba/teonet-go/{{ name }}:{{ version }}
+           docker push docker.pkg.github.com/kirill-scherba/teonet-go/{{ name }}:{{ version }}
            echo ""
-           docker tag teomon docker.pkg.github.com/kirill-scherba/teonet-go/teomon:latest
-           docker push docker.pkg.github.com/kirill-scherba/teonet-go/teomon:latest
+           docker tag {{ name }} docker.pkg.github.com/kirill-scherba/teonet-go/{{ name }}:latest
+           docker push docker.pkg.github.com/kirill-scherba/teonet-go/{{ name }}:latest
 
     register: out
   - debug: var=out.stdout_lines
