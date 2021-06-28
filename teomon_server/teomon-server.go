@@ -13,13 +13,37 @@ import (
 )
 
 // New teonet monitoring
-func New(teo *teonet.Teonet, appName, appShort, appLong, appVersion string) (mon *Teomon) {
+func New(teo *teonet.Teonet, appName, appShort, appLong, appVersion string, appStartTime time.Time) (mon *Teomon) {
 	mon = new(Teomon)
+
+	// Create new API
 	mon.API = teo.NewAPI(appName, appShort, appLong, appVersion)
+
+	// Read peers from file
 	file, _ := teonet.ConfigFile(appShort, "monitor.dat")
 	mon.peers.Load(file)
+
+	// Add himself
+	metric := teomon.NewMetric()
+	metric.AppName = appName
+	metric.AppShort = appShort
+	metric.AppVersion = appVersion
+	metric.TeoVersion = teonet.Version
+	metric.AppStartTime = appStartTime
+	metric.Address = teo.Address()
+	mon.peers.Add(metric)
+
+	// Add API commands reader
 	teo.AddReader(mon.Commands().Reader())
+
+	// Start check peers online task
 	mon.CheckOnline()
+
+	// Update himself peers
+	teo.WhenConnectedDisconnected(func() {
+		metric.Params.Add(teomon.ParamPeers, teo.NumPeers())
+	})
+
 	return
 }
 
@@ -142,7 +166,12 @@ func (teo *Teomon) CheckOnline() {
 		for {
 			time.Sleep(1 * time.Second)
 			teo.peers.Each(func(m *teomon.Metric) {
-				online := teo.Connected(m.Address)
+				var online bool
+				if m.Address == teo.Address() {
+					online = true
+				} else {
+					online = teo.Connected(m.Address)
+				}
 				m.Params.Add(teomon.ParamOnline, online)
 			})
 		}

@@ -17,9 +17,11 @@ import (
 const (
 	appName    = "Teonet monitoring server application"
 	appShort   = "teomon"
-	appVersion = "0.2.14"
+	appVersion = "0.2.15"
 	appLong    = ""
 )
+
+var appStartTime = time.Now()
 
 func main() {
 	teonet.Logo(appName, appVersion)
@@ -47,7 +49,7 @@ func main() {
 	}
 
 	// Start teonet monitor server
-	teomon_server.New(teo, appName, appShort, appLong, appVersion)
+	teomon_server.New(teo, appName, appShort, appLong, appVersion, appStartTime)
 
 	// Connect to teonet
 	for teo.Connect() != nil {
