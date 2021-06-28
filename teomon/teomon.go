@@ -91,6 +91,7 @@ type Metric struct {
 	AppVersion   string
 	TeoVersion   string
 	AppStartTime time.Time
+	New          bool
 
 	Params *Parameters
 
@@ -120,12 +121,14 @@ func (m Metric) MarshalBinary() (data []byte, err error) {
 	m.WriteSlice(buf, []byte(m.AppShort))
 	m.WriteSlice(buf, []byte(m.AppVersion))
 	m.WriteSlice(buf, []byte(m.TeoVersion))
-
+	//
 	d, err := m.AppStartTime.MarshalBinary()
 	if err != nil {
 		return
 	}
 	m.WriteSlice(buf, d)
+	//
+	binary.Write(buf, binary.LittleEndian, m.New)
 
 	if err = binary.Write(buf, binary.LittleEndian, uint16(len(m.Params.m))); err != nil {
 		return
@@ -169,6 +172,10 @@ func (m *Metric) UnmarshalBinary(data []byte) (err error) {
 		return
 	}
 	if err = m.AppStartTime.UnmarshalBinary(d); err != nil {
+		return
+	}
+
+	if err = binary.Read(buf, binary.LittleEndian, &m.New); err != nil {
 		return
 	}
 
@@ -369,6 +376,11 @@ func (p Peers) Save(file string) (err error) {
 		return
 	}
 
+	// Set all metrics New value to false
+	p.Each(func(m *Metric) {
+		m.New = false
+	})
+
 	data, err := p.MarshalBinary()
 	if err != nil {
 		return
@@ -490,11 +502,11 @@ func (p Peers) String() (str string) {
 
 	line := strings.Repeat("-",
 		l.appShort+l.appVersion+l.teoVersion+l.address+l.online+l.peers+l.start+
-			5+(numFields-1)*3+2,
+			5+4+(numFields-1)*3+2,
 	) + "\n"
 
 	str += line
-	str += fmt.Sprintf("  # | %-*s | %-*s | %-*s | %-*s | online | peers | start time \n",
+	str += fmt.Sprintf("  # | %-*s | n | %-*s | %-*s | %-*s | online | peers | start time \n",
 		l.appShort, "name", l.appVersion, "ver", l.teoVersion, "teo", l.address, "address")
 	str += line
 
@@ -502,9 +514,14 @@ func (p Peers) String() (str string) {
 		online, _ := m.Params.Get(ParamOnline)
 		peers, _ := m.Params.Get(ParamPeers)
 		start := fmt.Sprint(m.AppStartTime.Format(timeFormat))
-		str += fmt.Sprintf(" %2d | %-*s | %-*s | %-*s | %-*s | %-*v | %*v | %*s \n",
+		newPeer := "n"
+		if !m.New {
+			newPeer = " "
+		}
+		str += fmt.Sprintf(" %2d | %-*s | %s | %-*s | %-*s | %-*s | %-*v | %*v | %*s \n",
 			i+1,
 			l.appShort, m.AppShort,
+			newPeer,
 			l.appVersion, m.AppVersion,
 			l.teoVersion, m.TeoVersion,
 			l.address, m.Address,

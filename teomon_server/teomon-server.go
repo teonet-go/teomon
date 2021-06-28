@@ -91,7 +91,14 @@ func (teo *Teomon) Commands() *Teomon {
 				}
 				metric.Address = c.Address()
 				metric.Params.Add(teomon.ParamOnline, true)
+
+				if _, ok := teo.peers.Get(metric.Address); !ok {
+					metric.New = true
+				} else {
+					metric.New = false
+				}
 				teo.peers.Add(metric)
+
 				return true
 			}).SetAnswerMode(teonet.NoAnswer),
 
