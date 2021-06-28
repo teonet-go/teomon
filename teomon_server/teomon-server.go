@@ -89,14 +89,17 @@ func (teo *Teomon) Commands() *Teomon {
 					teo.Log().Println("unmarshal metric error:", err)
 					return true
 				}
+				// Set Address
 				metric.Address = c.Address()
+				// Set Param online true
 				metric.Params.Add(teomon.ParamOnline, true)
-
+				// Set New
 				if _, ok := teo.peers.Get(metric.Address); !ok {
 					metric.New = true
 				} else {
 					metric.New = false
 				}
+
 				teo.peers.Add(metric)
 
 				return true
