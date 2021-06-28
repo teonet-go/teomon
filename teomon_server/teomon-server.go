@@ -16,6 +16,8 @@ import (
 func New(teo *teonet.Teonet, appName, appShort, appLong, appVersion string) (mon *Teomon) {
 	mon = new(Teomon)
 	mon.API = teo.NewAPI(appName, appShort, appLong, appVersion)
+	file, _ := teonet.ConfigFile(appShort, "monitor.dat")
+	mon.peers.Load(file)
 	teo.AddReader(mon.Commands().Reader())
 	mon.CheckOnline()
 	return
@@ -126,18 +128,8 @@ func (teo *Teomon) Commands() *Teomon {
 			// Command reader (execute when command received)
 			SetReader(func(c *teonet.Channel, p *teonet.Packet, data []byte) bool {
 				teo.Log().Println("got save command from", c)
-				// param := teomon.NewParameter()
-				// err := param.UnmarshalBinary(data)
-				// if err != nil {
-				// 	teo.Log().Println("unmarshal parameter error:", err)
-				// 	return true
-				// }
-				// metric, ok := teo.peers.Get(c.Address())
-				// if !ok {
-				// 	teo.Log().Println("can't find peer with address:", c.Address())
-				// 	return true
-				// }
-				// metric.Params.Add(param.Name, param.Value)
+				file, _ := teonet.ConfigFile(teo.API.Short(), "monitor.dat")
+				teo.peers.Save(file)
 				return true
 			}).SetAnswerMode(teonet.NoAnswer),
 	)

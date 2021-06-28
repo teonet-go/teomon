@@ -8,7 +8,9 @@ package teomon
 import (
 	"bytes"
 	"encoding/binary"
+	"errors"
 	"fmt"
+	"os"
 	"reflect"
 	"sort"
 	"strings"
@@ -354,6 +356,55 @@ func (p *Peers) UnmarshalBinary(data []byte) (err error) {
 			return
 		}
 		*p = append(*p, m)
+	}
+
+	return
+}
+
+// Save peers to file
+func (p Peers) Save(file string) (err error) {
+
+	f, err := os.Create(file)
+	if err != nil {
+		return
+	}
+
+	data, err := p.MarshalBinary()
+	if err != nil {
+		return
+	}
+
+	_, err = f.Write(data)
+
+	return
+}
+
+// Load peers from file
+func (p *Peers) Load(file string) (err error) {
+
+	const bufferSize = 1024 * 1024
+
+	// Open file
+	f, err := os.Open(file)
+	if err != nil {
+		return
+	}
+
+	// Read file data
+	data := make([]byte, bufferSize)
+	n, err := f.Read(data)
+	if err != nil {
+		return
+	}
+	if n == bufferSize {
+		err = errors.New("too small read buffer")
+		return
+	}
+
+	// Unmarshal config data
+	err = p.UnmarshalBinary(data[:n])
+	if err != nil {
+		return
 	}
 
 	return

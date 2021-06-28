@@ -17,7 +17,7 @@ import (
 const (
 	appName    = "Teonet monitoring server application"
 	appShort   = "teomon"
-	appVersion = "0.2.12"
+	appVersion = "0.2.14"
 	appLong    = ""
 )
 
@@ -46,13 +46,13 @@ func main() {
 		return
 	}
 
+	// Start teonet monitor server
+	teomon_server.New(teo, appName, appShort, appLong, appVersion)
+
 	// Connect to teonet
 	for teo.Connect() != nil {
 		time.Sleep(1 * time.Second)
 	}
-
-	// Start teonet monitor server
-	teomon_server.New(teo, appName, appShort, appLong, appVersion)
 
 	// Teonet address
 	fmt.Printf("Teonet addres: %s\n\n", teo.Address())
