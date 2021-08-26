@@ -20,7 +20,7 @@ func New(teo *teonet.Teonet, appName, appShort, appLong, appVersion string, appS
 	mon.API = teo.NewAPI(appName, appShort, appLong, appVersion)
 
 	// Read peers from file
-	file, _ := teonet.ConfigFile(appShort, "monitor.dat")
+	file, _ := teo.ConfigFile(appShort, "monitor.dat")
 	mon.peers.Load(file)
 
 	// Add himself
@@ -162,7 +162,7 @@ func (teo *Teomon) Commands() *Teomon {
 			// Command reader (execute when command received)
 			SetReader(func(c *teonet.Channel, p *teonet.Packet, data []byte) bool {
 				teo.Log().Println("got save command from", c)
-				file, _ := teonet.ConfigFile(teo.API.Short(), "monitor.dat")
+				file, _ := teo.ConfigFile(teo.API.Short(), "monitor.dat")
 				teo.peers.Save(file)
 				return true
 			}).SetAnswerMode(teonet.NoAnswer),
