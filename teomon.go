@@ -29,7 +29,7 @@ type TeonetInterface interface {
 	WhenConnectedDisconnected(f func())
 	WhenConnectedTo(address string, f func())
 	ConnectTo(address string, attr ...interface{}) error
-	SendTo(address string, data []byte, attr ...interface{}) (uint32, error)
+	SendTo(address string, data []byte, attr ...interface{}) (int, error)
 	Address() string
 	NumPeers() int
 }

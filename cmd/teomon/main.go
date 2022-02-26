@@ -12,39 +12,46 @@ import (
 
 	"github.com/kirill-scherba/teomon/teomon_server"
 	"github.com/kirill-scherba/teonet"
+	"github.com/kirill-scherba/tru/teolog"
 )
 
 const (
 	appName    = "Teonet monitoring server application"
 	appShort   = "teomon"
-	appVersion = "0.2.18"
+	appVersion = "0.3.0"
 	appLong    = ""
 )
 
+var log = teolog.New()
 var appStartTime = time.Now()
 
 func main() {
 	teonet.Logo(appName, appVersion)
 
 	// Command line arguments
-	var params struct {
+	var p struct {
 		appShort  string
-		logLevel  string
-		showTrudp bool
+		loglevel  string
+		logfilter string
+		stat      bool
+		hotkey    bool
 		port      int
 	}
-	flag.StringVar(&params.appShort, "app-short", appShort, "application short name")
-	flag.BoolVar(&params.showTrudp, "u", false, "show trudp statistic")
-	flag.IntVar(&params.port, "p", 0, "local port")
-	flag.StringVar(&params.logLevel, "log-level", "NONE", "log level")
+	flag.StringVar(&p.appShort, "app-short", appShort, "application short name")
+	flag.IntVar(&p.port, "p", 0, "local port")
+	flag.BoolVar(&p.stat, "stat", false, "show statistic")
+	flag.BoolVar(&p.hotkey, "hotkey", false, "start hotkey menu")
+	flag.StringVar(&p.loglevel, "loglevel", "NONE", "set log level")
+	flag.StringVar(&p.logfilter, "logfilter", "", "set log filter")
 	flag.Parse()
 
 	// Initial Teonet
-	teo, err := teonet.New(params.appShort, params.port,
-		params.showTrudp, params.logLevel, teonet.Log(),
+	teo, err := teonet.New(p.appShort, p.port, teonet.ShowStat(p.stat),
+		teonet.StartHotkey(p.hotkey), log, p.loglevel,
+		teonet.Logfilter(p.logfilter),
 	)
 	if err != nil {
-		teo.Log().Println("can't init Teonet, error:", err)
+		fmt.Println("can't init Teonet, error:", err)
 		return
 	}
 
