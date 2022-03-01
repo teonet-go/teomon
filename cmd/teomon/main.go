@@ -51,8 +51,7 @@ func main() {
 		teonet.Logfilter(p.logfilter),
 	)
 	if err != nil {
-		fmt.Println("can't init Teonet, error:", err)
-		return
+		panic("can't init Teonet, error: " + err.Error())
 	}
 
 	// Start teonet monitor server
