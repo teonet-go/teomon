@@ -37,7 +37,7 @@ func main() {
 		hotkey    bool
 		port      int
 	}
-	flag.StringVar(&p.appShort, "app-short", appShort, "application short name")
+	flag.StringVar(&p.appShort, "name", appShort, "application short name")
 	flag.IntVar(&p.port, "p", 0, "local port")
 	flag.BoolVar(&p.stat, "stat", false, "show statistic")
 	flag.BoolVar(&p.hotkey, "hotkey", false, "start hotkey menu")
@@ -46,8 +46,8 @@ func main() {
 	flag.Parse()
 
 	// Initial Teonet
-	teo, err := teonet.New(p.appShort, p.port, teonet.ShowStat(p.stat),
-		teonet.StartHotkey(p.hotkey), log, p.loglevel,
+	teo, err := teonet.New(p.appShort, p.port, teonet.Stat(p.stat),
+		teonet.Hotkey(p.hotkey), log, p.loglevel,
 		teonet.Logfilter(p.logfilter),
 	)
 	if err != nil {
@@ -58,7 +58,7 @@ func main() {
 	teomon_server.New(teo, appName, appShort, appLong, appVersion, appStartTime)
 
 	// Connect to teonet
-	for teo.Connect() != nil {
+	for teo.Connect("http://localhost:10000/auth") != nil {
 		time.Sleep(1 * time.Second)
 	}
 
