@@ -18,6 +18,7 @@ var log *teolog.Teolog
 // New teonet monitoring
 func New(teo *teonet.Teonet, appName, appShort, appLong, appVersion string, appStartTime time.Time) (mon *Teomon) {
 	mon = new(Teomon)
+	mon.peers = teomon.NewPeers()
 	log = teo.Log()
 
 	// Create new API
@@ -53,7 +54,7 @@ func New(teo *teonet.Teonet, appName, appShort, appLong, appVersion string, appS
 
 type Teomon struct {
 	*teonet.API
-	peers teomon.Peers
+	peers *teomon.Peers
 }
 
 // Commands teonet monitoring service API commands
