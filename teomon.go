@@ -452,6 +452,9 @@ func (p *Peers) Add(metric *Metric) {
 
 	// Update if exists
 	if _, i, ok := p.find(metric.Address); ok {
+		p.Lock()
+		defer p.Unlock()
+		
 		p.metrics[i] = metric
 		return
 	}
