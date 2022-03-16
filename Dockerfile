@@ -48,7 +48,7 @@
 
 # Docker builder
 # 
-FROM golang:1.16.4 AS builder
+FROM golang:1.17.8 AS builder
 
 WORKDIR /go/src/github.com/kirill-scherba/
 RUN apt update 
@@ -56,7 +56,7 @@ RUN apt update
 
 COPY ./teonet ./teonet
 COPY ./teomon ./teomon
-COPY ./trudp ./trudp
+COPY ./tru ./tru
 
 RUN ls /go/src/github.com/kirill-scherba/
 

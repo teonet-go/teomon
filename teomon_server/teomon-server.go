@@ -1,4 +1,4 @@
-// Copyright 2021 Kirill Scherba <kirill@scherba.ru>. All rights reserved.
+// Copyright 2021-22 Kirill Scherba <kirill@scherba.ru>. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -8,13 +8,18 @@ package teomon_server
 import (
 	"time"
 
-	"github.com/kirill-scherba/teomon/teomon"
+	"github.com/kirill-scherba/teomon"
 	"github.com/kirill-scherba/teonet"
+	"github.com/kirill-scherba/tru/teolog"
 )
+
+var log *teolog.Teolog
 
 // New teonet monitoring
 func New(teo *teonet.Teonet, appName, appShort, appLong, appVersion string, appStartTime time.Time) (mon *Teomon) {
 	mon = new(Teomon)
+	mon.peers = teomon.NewPeers()
+	log = teo.Log()
 
 	// Create new API
 	mon.API = teo.NewAPI(appName, appShort, appLong, appVersion)
@@ -49,7 +54,7 @@ func New(teo *teonet.Teonet, appName, appShort, appLong, appVersion string, appS
 
 type Teomon struct {
 	*teonet.API
-	peers teomon.Peers
+	peers *teomon.Peers
 }
 
 // Commands teonet monitoring service API commands
@@ -82,11 +87,11 @@ func (teo *Teomon) Commands() *Teomon {
 			SetUsage("<metric MonitorMetric>"). // Usage (input parameter)
 			// Command reader (execute when command received)
 			SetReader(func(c *teonet.Channel, p *teonet.Packet, data []byte) bool {
-				teo.Log().Println("got metric command from", c)
+				log.Debug.Println("got metric command from", c)
 				metric := teomon.NewMetric()
 				err := metric.UnmarshalBinary(data)
 				if err != nil {
-					teo.Log().Println("unmarshal metric error:", err)
+					log.Debug.Println("unmarshal metric error:", err)
 					return true
 				}
 				// Set Address
@@ -113,16 +118,16 @@ func (teo *Teomon) Commands() *Teomon {
 			SetUsage("<parameter MonitorParameter>"). // Usage (input parameter)
 			// Command reader (execute when command received)
 			SetReader(func(c *teonet.Channel, p *teonet.Packet, data []byte) bool {
-				teo.Log().Println("got parameter command from", c)
+				log.Debug.Println("got parameter command from", c)
 				param := teomon.NewParameter()
 				err := param.UnmarshalBinary(data)
 				if err != nil {
-					teo.Log().Println("unmarshal parameter error:", err)
+					log.Debug.Println("unmarshal parameter error:", err)
 					return true
 				}
 				metric, ok := teo.peers.Get(c.Address())
 				if !ok {
-					teo.Log().Println("can't find peer with address:", c.Address())
+					log.Debug.Println("can't find peer with address:", c.Address())
 					return true
 				}
 				metric.Params.Add(param.Name, param.Value)
@@ -140,10 +145,10 @@ func (teo *Teomon) Commands() *Teomon {
 				SetReturn("<answer []*Metric>"). // Return (output parameters)
 				// Command reader (execute when command received)
 				SetReader(func(c *teonet.Channel, p *teonet.Packet, data []byte) bool {
-					teo.Log().Println("got list command from", c)
+					log.Debug.Println("got list command from", c)
 					out, err := teo.peers.MarshalBinary()
 					if err != nil {
-						teo.Log().Println("marshal to binary error:", err)
+						log.Debug.Println("marshal to binary error:", err)
 						return true
 					}
 					teo.SendAnswer(cmdApi, c, out, p)
@@ -161,7 +166,7 @@ func (teo *Teomon) Commands() *Teomon {
 			// SetUsage("<parameter MonitorParameter>"). // Usage (input parameter)
 			// Command reader (execute when command received)
 			SetReader(func(c *teonet.Channel, p *teonet.Packet, data []byte) bool {
-				teo.Log().Println("got save command from", c)
+				log.Debug.Println("got save command from", c)
 				file, _ := teo.ConfigFile(teo.API.Short(), "monitor.dat")
 				teo.peers.Save(file)
 				return true

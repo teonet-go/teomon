@@ -29,7 +29,7 @@ type TeonetInterface interface {
 	WhenConnectedDisconnected(f func())
 	WhenConnectedTo(address string, f func())
 	ConnectTo(address string, attr ...interface{}) error
-	SendTo(address string, data []byte, attr ...interface{}) (uint32, error)
+	SendTo(address string, data []byte, attr ...interface{}) (int, error)
 	Address() string
 	NumPeers() int
 }
@@ -130,11 +130,12 @@ func (m Metric) MarshalBinary() (data []byte, err error) {
 	//
 	binary.Write(buf, binary.LittleEndian, m.New)
 
+	m.Params.RLock()
+	defer m.Params.RUnlock()
+
 	if err = binary.Write(buf, binary.LittleEndian, uint16(len(m.Params.m))); err != nil {
 		return
 	}
-	m.Params.RLock()
-	defer m.Params.RUnlock()
 	for name, val := range m.Params.m {
 		p := Parameter{Name: name, Value: val}
 		data, err := p.MarshalBinary()
@@ -327,26 +328,38 @@ func (p *Parameter) UnmarshalBinary(data []byte) (err error) {
 	return
 }
 
-type Peers []*Metric
+type Peers struct {
+	metrics []*Metric
+	*sync.RWMutex
+}
 
-func (p Peers) MarshalBinary() (data []byte, err error) {
+func NewPeers() (p *Peers) {
+	p = new(Peers)
+	p.RWMutex = new(sync.RWMutex)
+	return
+}
+
+func (p *Peers) MarshalBinary() (data []byte, err error) {
+	p.RLock()
+	defer p.RUnlock()
+
 	buf := new(bytes.Buffer)
-
-	l := uint16(len(p))
+	l := uint16(len(p.metrics))
 	binary.Write(buf, binary.LittleEndian, l)
-	for _, m := range p {
+	for _, m := range p.metrics {
 		d, _ := m.MarshalBinary()
 		m.WriteSlice(buf, d)
 	}
-
 	data = buf.Bytes()
 	return
 }
 
 func (p *Peers) UnmarshalBinary(data []byte) (err error) {
-	buf := bytes.NewBuffer(data)
+	p.Lock()
+	defer p.Unlock()
 
-	*p = nil
+	buf := bytes.NewBuffer(data)
+	p.metrics = nil
 	var l uint16
 	if err = binary.Read(buf, binary.LittleEndian, &l); err != nil {
 		return
@@ -362,14 +375,13 @@ func (p *Peers) UnmarshalBinary(data []byte) (err error) {
 		if err != nil {
 			return
 		}
-		*p = append(*p, m)
+		p.metrics = append(p.metrics, m)
 	}
-
 	return
 }
 
 // Save peers to file
-func (p Peers) Save(file string) (err error) {
+func (p *Peers) Save(file string) (err error) {
 
 	f, err := os.Create(file)
 	if err != nil {
@@ -423,8 +435,11 @@ func (p *Peers) Load(file string) (err error) {
 }
 
 // find metric by address
-func (p Peers) find(address string) (m *Metric, idx int, ok bool) {
-	for idx, m = range p {
+func (p *Peers) find(address string) (m *Metric, idx int, ok bool) {
+	p.RLock()
+	defer p.RUnlock()
+
+	for idx, m = range p.metrics {
 		if m.Address == address {
 			ok = true
 			return
@@ -438,31 +453,39 @@ func (p *Peers) Add(metric *Metric) {
 
 	// Update if exists
 	if _, i, ok := p.find(metric.Address); ok {
-		(*p)[i] = metric
+		p.Lock()
+		defer p.Unlock()
+
+		p.metrics[i] = metric
 		return
 	}
 
 	// Add new
 	metric.Params.m = make(map[string]interface{})
 	metric.Params.Add(ParamOnline, true)
-	*p = append(*p, metric)
+
+	p.Lock()
+	defer p.Unlock()
+	p.metrics = append(p.metrics, metric)
 }
 
 // Get peer metric by address
-func (p Peers) Get(address string) (m *Metric, ok bool) {
+func (p *Peers) Get(address string) (m *Metric, ok bool) {
 	m, _, ok = p.find(address)
 	return
 }
 
 // Each execute callback for each Metric
-func (p Peers) Each(f func(m *Metric)) {
-	for _, m := range p {
+func (p *Peers) Each(f func(m *Metric)) {
+	p.RLock()
+	defer p.RUnlock()
+
+	for _, m := range p.metrics {
 		f(m)
 	}
 }
 
 func (p Peers) String() (str string) {
-	sort.Slice(p, func(i, j int) bool { return p[i].AppShort < p[j].AppShort })
 
 	// Calculate max columns len
 	var l struct {
@@ -477,7 +500,11 @@ func (p Peers) String() (str string) {
 
 	timeFormat := "2006-01-02 15:04:05"
 
-	for _, m := range p {
+	sort.Slice(p.metrics, func(i, j int) bool {
+		return p.metrics[i].AppShort < p.metrics[j].AppShort
+	})
+
+	for _, m := range p.metrics {
 		if len := len(m.AppShort); len > l.appShort {
 			l.appShort = len
 		}
@@ -510,7 +537,7 @@ func (p Peers) String() (str string) {
 		l.appShort, "name", l.appVersion, "ver", l.teoVersion, "teo", l.address, "address")
 	str += line
 
-	for i, m := range p {
+	for i, m := range p.metrics {
 		online, _ := m.Params.Get(ParamOnline)
 		peers, _ := m.Params.Get(ParamPeers)
 		start := fmt.Sprint(m.AppStartTime.Format(timeFormat))
