@@ -48,7 +48,7 @@
 
 # Docker builder
 # 
-FROM golang:1.17.7 AS builder
+FROM golang:1.17.8 AS builder
 
 WORKDIR /go/src/github.com/kirill-scherba/
 RUN apt update 
