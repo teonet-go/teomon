@@ -130,11 +130,12 @@ func (m Metric) MarshalBinary() (data []byte, err error) {
 	//
 	binary.Write(buf, binary.LittleEndian, m.New)
 
+	m.Params.RLock()
+	defer m.Params.RUnlock()
+
 	if err = binary.Write(buf, binary.LittleEndian, uint16(len(m.Params.m))); err != nil {
 		return
 	}
-	m.Params.RLock()
-	defer m.Params.RUnlock()
 	for name, val := range m.Params.m {
 		p := Parameter{Name: name, Value: val}
 		data, err := p.MarshalBinary()
@@ -454,7 +455,7 @@ func (p *Peers) Add(metric *Metric) {
 	if _, i, ok := p.find(metric.Address); ok {
 		p.Lock()
 		defer p.Unlock()
-		
+
 		p.metrics[i] = metric
 		return
 	}
