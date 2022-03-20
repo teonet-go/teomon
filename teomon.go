@@ -1,8 +1,8 @@
-// Copyright 2021 Kirill Scherba <kirill@scherba.ru>. All rights reserved.
+// Copyright 2021-22 Kirill Scherba <kirill@scherba.ru>. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// Teonet v4 monitoring client package
+// Teonet v5 monitoring client package
 package teomon
 
 import (
@@ -20,11 +20,13 @@ import (
 	"github.com/kirill-scherba/bslice"
 )
 
+// Comand constant
 const (
 	CmdMetric    byte = 130
 	CmdParameter byte = 131
 )
 
+// TeonetInterface define teonet functions used in teomon
 type TeonetInterface interface {
 	WhenConnectedDisconnected(f func())
 	WhenConnectedTo(address string, f func())
@@ -69,6 +71,7 @@ func Connect(teo TeonetInterface, address string, m Metric, t ...TeonetInterface
 	return
 }
 
+// Teonet monitor struct
 type Monitor struct {
 	teo     TeonetInterface
 	address string
@@ -84,6 +87,7 @@ func (mon Monitor) SendParam(name string, value interface{}) {
 	mon.teo.SendTo(mon.address, data)
 }
 
+// Metric contain metric struct and methods receiver
 type Metric struct {
 	Address      string
 	AppName      string
@@ -92,27 +96,24 @@ type Metric struct {
 	TeoVersion   string
 	AppStartTime time.Time
 	New          bool
-
-	Params *Parameters
-
+	Params       *Parameters
 	bslice.ByteSlice
 }
 
+// Param constant
 const (
 	ParamOnline = "online"
 	ParamPeers  = "peers"
 )
 
+// NewMetric create new metric object
 func NewMetric() (m *Metric) {
 	m = new(Metric)
 	m.NewParams()
 	return
 }
 
-func (m *Metric) NewParams() {
-	m.Params = &Parameters{m: make(map[string]interface{})}
-}
-
+// MarshalBinary binary marshal Metric struct
 func (m Metric) MarshalBinary() (data []byte, err error) {
 	buf := new(bytes.Buffer)
 
@@ -149,6 +150,7 @@ func (m Metric) MarshalBinary() (data []byte, err error) {
 	return
 }
 
+// UnmarshalBinary binary unmarshal Metric struct
 func (m *Metric) UnmarshalBinary(data []byte) (err error) {
 	buf := bytes.NewBuffer(data)
 
@@ -197,9 +199,15 @@ func (m *Metric) UnmarshalBinary(data []byte) (err error) {
 	return
 }
 
+// Parameters is metric parameters struct and methods receiver
 type Parameters struct {
 	m map[string]interface{}
 	sync.RWMutex
+}
+
+// NewParams create new params object
+func (m *Metric) NewParams() {
+	m.Params = &Parameters{m: make(map[string]interface{})}
 }
 
 // add or update parameter
@@ -226,18 +234,20 @@ func (p *Parameters) Each(f func(name string, value interface{})) {
 	}
 }
 
+// Parameter struct and methods receiver
+type Parameter struct {
+	Name  string
+	Value interface{}
+	bslice.ByteSlice
+}
+
+// NewParameter create new parameter
 func NewParameter() (p *Parameter) {
 	p = new(Parameter)
 	return
 }
 
-type Parameter struct {
-	Name  string
-	Value interface{}
-
-	bslice.ByteSlice
-}
-
+// MarshalBinary binary marshal Parameter struct
 func (p Parameter) MarshalBinary() (data []byte, err error) {
 	buf := new(bytes.Buffer)
 
@@ -259,6 +269,7 @@ func (p Parameter) MarshalBinary() (data []byte, err error) {
 	return
 }
 
+// UnmarshalBinary binary unmarshal Parameter struct
 func (p *Parameter) UnmarshalBinary(data []byte) (err error) {
 	buf := bytes.NewBuffer(data)
 
@@ -328,17 +339,20 @@ func (p *Parameter) UnmarshalBinary(data []byte) (err error) {
 	return
 }
 
+// Peers struct and methods receiver
 type Peers struct {
 	metrics []*Metric
 	*sync.RWMutex
 }
 
+// NewPeers create new Peers struct
 func NewPeers() (p *Peers) {
 	p = new(Peers)
 	p.RWMutex = new(sync.RWMutex)
 	return
 }
 
+// MarshalBinary binary marshal Peers struct
 func (p *Peers) MarshalBinary() (data []byte, err error) {
 	p.RLock()
 	defer p.RUnlock()
@@ -354,6 +368,7 @@ func (p *Peers) MarshalBinary() (data []byte, err error) {
 	return
 }
 
+// UnmarshalBinary binary unmarshal Peers struct
 func (p *Peers) UnmarshalBinary(data []byte) (err error) {
 	p.Lock()
 	defer p.Unlock()
@@ -485,6 +500,7 @@ func (p *Peers) Each(f func(m *Metric)) {
 	}
 }
 
+// String return string which contain Peers table
 func (p Peers) String() (str string) {
 
 	// Calculate max columns len
