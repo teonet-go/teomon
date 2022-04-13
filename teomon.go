@@ -8,6 +8,7 @@ package teomon
 import (
 	"bytes"
 	"encoding/binary"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -587,4 +588,38 @@ func (p Peers) String() (str string) {
 	str += line[:len(line)-1]
 
 	return
+}
+
+// Json return string which contain Peers in json format
+func (p Peers) Json() (data []byte, err error) {
+	p.RLock()
+	defer p.RUnlock()
+
+	// Sort metrics
+	sort.Slice(p.metrics, func(i, j int) bool {
+		return p.metrics[i].AppShort < p.metrics[j].AppShort
+	})
+
+	type Pmetric struct {
+		Metric
+		Online interface{}
+		Peers  interface{}
+	}
+
+	var pmetrics []Pmetric
+
+	// Add online and peers to output json
+	for _, m := range p.metrics {
+		online, _ := m.Params.Get(ParamOnline)
+		peers, _ := m.Params.Get(ParamPeers)
+		pm := Pmetric{
+			Metric: *m,
+			Online: online,
+			Peers:  peers,
+		}
+		pmetrics = append(pmetrics, pm)
+	}
+
+	// Marshal json
+	return json.Marshal(pmetrics)
 }
