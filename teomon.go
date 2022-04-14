@@ -25,11 +25,13 @@ import (
 const (
 	CmdMetric    byte = 130
 	CmdParameter byte = 131
+
+	version = "0.5.1"
 )
 
 // TeonetInterface define teonet functions used in teomon
 type TeonetInterface interface {
-	WhenConnectedDisconnected(f func())
+	WhenConnectedDisconnected(f func(e byte))
 	WhenConnectedTo(address string, f func())
 	ConnectTo(address string, attr ...interface{}) error
 	SendTo(address string, data []byte, attr ...interface{}) (int, error)
@@ -65,8 +67,12 @@ func Connect(teo TeonetInterface, address string, m Metric, t ...TeonetInterface
 	}
 
 	// Process connected/disconnected events and send Parameter "peers" to monitor
-	teocheck.WhenConnectedDisconnected(func() {
-		mon.SendParam(ParamPeers, teocheck.NumPeers())
+	teocheck.WhenConnectedDisconnected(func(e byte) {
+		numPeers := teocheck.NumPeers()
+		if e == 5 /* EventDisconnected */ {
+			numPeers--
+		}
+		mon.SendParam(ParamPeers, numPeers)
 	})
 
 	return
