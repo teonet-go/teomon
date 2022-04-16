@@ -26,7 +26,7 @@ const (
 	CmdMetric    byte = 130
 	CmdParameter byte = 131
 
-	version = "0.5.1"
+	version = "0.5.3"
 )
 
 // TeonetInterface define teonet functions used in teomon
@@ -59,6 +59,9 @@ func Connect(teo TeonetInterface, address string, m Metric, t ...TeonetInterface
 		data = append([]byte{CmdMetric}, data...)
 		teo.SendTo(address, data)
 		mon.SendParam(ParamPeers, teocheck.NumPeers())
+		if h, err := os.Hostname(); err == nil {
+			mon.SendParam(ParamHost, h)
+		}
 	})
 
 	// Connect to monitor
@@ -111,6 +114,7 @@ type Metric struct {
 const (
 	ParamOnline = "online"
 	ParamPeers  = "peers"
+	ParamHost   = "host"
 )
 
 // NewMetric create new metric object
@@ -610,6 +614,7 @@ func (p Peers) Json() (data []byte, err error) {
 		Metric
 		Online interface{}
 		Peers  interface{}
+		Host   interface{}
 	}
 
 	var pmetrics []Pmetric
@@ -618,10 +623,12 @@ func (p Peers) Json() (data []byte, err error) {
 	for _, m := range p.metrics {
 		online, _ := m.Params.Get(ParamOnline)
 		peers, _ := m.Params.Get(ParamPeers)
+		host, _ := m.Params.Get(ParamHost)
 		pm := Pmetric{
 			Metric: *m,
 			Online: online,
 			Peers:  peers,
+			Host:   host,
 		}
 		pmetrics = append(pmetrics, pm)
 	}
