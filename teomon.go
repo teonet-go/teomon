@@ -26,7 +26,7 @@ const (
 	CmdMetric    byte = 130
 	CmdParameter byte = 131
 
-	version = "0.5.4"
+	version = "0.5.5"
 )
 
 // TeonetInterface define teonet functions used in teomon
@@ -461,9 +461,11 @@ func (p *Peers) Load(file string) (err error) {
 }
 
 // find metric by address
-func (p *Peers) find(address string) (m *Metric, idx int, ok bool) {
-	p.RLock()
-	defer p.RUnlock()
+func (p *Peers) find(address string, unsafe ...bool) (m *Metric, idx int, ok bool) {
+	if len(unsafe) == 0 || !unsafe[0] {
+		p.RLock()
+		defer p.RUnlock()
+	}
 
 	for idx, m = range p.metrics {
 		if m.Address == address {
@@ -503,14 +505,23 @@ func (p *Peers) Get(address string) (m *Metric, ok bool) {
 
 // Del peer by address
 func (p *Peers) Del(address string) (m *Metric, ok bool) {
-	m, _, ok = p.find(address)
+	p.Lock()
+	defer p.Unlock()
+
+	m, idx, ok := p.find(address, true)
 	if !ok {
 		return
 	}
 
-	p.Lock()
-	defer p.Unlock()
-	delete(p.metrics, address)
+	switch {
+	case idx == 0:
+		p.metrics = p.metrics[1:]
+	case idx == len(p.metrics)-1:
+		p.metrics = p.metrics[:len(p.metrics)-1]
+	default:
+		p.metrics = append(p.metrics[:idx], p.metrics[idx+1:]...)
+	}
+
 	return
 }
 

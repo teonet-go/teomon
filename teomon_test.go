@@ -201,3 +201,61 @@ func TestMetric(t *testing.T) {
 
 	fmt.Println("unmarshalled metric:", mout)
 }
+
+func TestPeersDel(t *testing.T) {
+
+	var peers *Peers
+	var m *Metric
+
+	peers = NewPeers()
+
+	m = NewMetric()
+	m.Address = "qUzILis-1"
+	peers.Add(m)
+
+	m = NewMetric()
+	m.Address = "qUzILis-2"
+	peers.Add(m)
+
+	m = NewMetric()
+	m.Address = "qUzILis-3"
+	peers.Add(m)
+
+	m = NewMetric()
+	m.Address = "qUzILis-4"
+	peers.Add(m)
+
+	m = NewMetric()
+	m.Address = "qUzILis-5"
+	peers.Add(m)
+
+	// Delete first record
+	peers.Del("qUzILis-1")
+
+	// Delete last record
+	peers.Del("qUzILis-5")
+
+	// Delete midle record
+	peers.Del("qUzILis-3")
+
+	// Check length
+	l := len(peers.metrics)
+	if l != 2 {
+		t.Error("wrong peers length", l)
+		return
+	}
+	fmt.Println(peers)
+
+	// Delete last two peers
+	peers.Del("qUzILis-2")
+	peers.Del("qUzILis-4")
+
+	// Check length
+	l = len(peers.metrics)
+	if l != 0 {
+		t.Error("wrong peers length", l)
+		return
+	}
+	fmt.Println(peers)
+
+}
