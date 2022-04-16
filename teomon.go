@@ -26,7 +26,7 @@ const (
 	CmdMetric    byte = 130
 	CmdParameter byte = 131
 
-	version = "0.5.3"
+	version = "0.5.4"
 )
 
 // TeonetInterface define teonet functions used in teomon
@@ -498,6 +498,19 @@ func (p *Peers) Add(metric *Metric) {
 // Get peer metric by address
 func (p *Peers) Get(address string) (m *Metric, ok bool) {
 	m, _, ok = p.find(address)
+	return
+}
+
+// Del peer by address
+func (p *Peers) Del(address string) (m *Metric, ok bool) {
+	m, _, ok = p.find(address)
+	if !ok {
+		return
+	}
+
+	p.Lock()
+	defer p.Unlock()
+	delete(p.metrics, address)
 	return
 }
 
