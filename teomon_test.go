@@ -257,5 +257,63 @@ func TestPeersDel(t *testing.T) {
 		return
 	}
 	fmt.Println(peers)
+}
 
+func TestSortMetric(t *testing.T) {
+
+	for i := 0; i < 2; i++ {
+		p := NewPeers()
+
+		m1 := NewMetric()
+		m1.AppShort = "app-01"
+		m1.Address = "a1"
+		p.Add(m1) // set online true
+
+		m2 := NewMetric()
+		m2.AppShort = "app-02"
+		m2.Address = "a2"
+		p.Add(m2)
+		m2.Params.Add(ParamOnline, false)
+		p.Add(m2)
+
+		m3 := NewMetric()
+		m3.AppShort = "app-03"
+		m3.Address = "a3"
+		p.Add(m3) // set online true
+
+		m4 := NewMetric()
+		m4.AppShort = "app-04"
+		m4.Address = "a4"
+		p.Add(m4)
+		m4.Params.Add(ParamOnline, false)
+		p.Add(m4)
+
+		m5 := NewMetric()
+		m5.AppShort = "_app-05"
+		m5.Address = "a5"
+		p.Add(m5) // set online true
+		m5.Params.Add(ParamOnline, false)
+		p.Add(m5)
+
+		switch i {
+		case 0:
+			msg, _ := p.Json()
+			fmt.Println(string(msg)) // metrics sort inside p.String() or p.Json
+		default:
+			msg := p.String()
+			fmt.Println(msg) // metrics sort inside p.String() or p.Json
+		}
+
+		// Check sort
+		if p.metrics[0].AppShort == "_app-05" &&
+			p.metrics[1].AppShort == "app-02" &&
+			p.metrics[2].AppShort == "app-04" &&
+			p.metrics[3].AppShort == "app-01" &&
+			p.metrics[4].AppShort == "app-03" {
+
+		} else {
+			t.Error("wrong metrics sort")
+			return
+		}
+	}
 }
