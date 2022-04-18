@@ -26,7 +26,7 @@ const (
 	CmdMetric    byte = 130
 	CmdParameter byte = 131
 
-	version = "0.5.5"
+	version = "0.5.6"
 )
 
 // TeonetInterface define teonet functions used in teomon
@@ -535,6 +535,28 @@ func (p *Peers) Each(f func(m *Metric)) {
 	}
 }
 
+// sortMetrics sort metrics with Online (offline first) and AppShort
+func (p Peers) sortMetrics(metrics []*Metric) {
+	sort.Slice(metrics, func(i, j int) bool {
+		online1, _ := metrics[i].Params.Get(ParamOnline)
+		online2, _ := metrics[j].Params.Get(ParamOnline)
+
+		// If online parameter has valid type bool sort by online
+		if reflect.TypeOf(online1).Kind() == reflect.Bool && reflect.TypeOf(online2).Kind() == reflect.Bool {
+			onl1 := online1.(bool)
+			onl2 := online2.(bool)
+			switch {
+			case !onl1 && onl2:
+				return true
+			case onl1 && !onl2:
+				return false
+			}
+		}
+
+		return metrics[i].AppShort < metrics[j].AppShort
+	})
+}
+
 // String return string which contain Peers table
 func (p Peers) String() (str string) {
 
@@ -551,9 +573,8 @@ func (p Peers) String() (str string) {
 
 	timeFormat := "2006-01-02 15:04:05"
 
-	sort.Slice(p.metrics, func(i, j int) bool {
-		return p.metrics[i].AppShort < p.metrics[j].AppShort
-	})
+	// Sort metrics
+	p.sortMetrics(p.metrics)
 
 	for _, m := range p.metrics {
 		if len := len(m.AppShort); len > l.appShort {
@@ -630,9 +651,7 @@ func (p Peers) Json() (data []byte, err error) {
 	defer p.RUnlock()
 
 	// Sort metrics
-	sort.Slice(p.metrics, func(i, j int) bool {
-		return p.metrics[i].AppShort < p.metrics[j].AppShort
-	})
+	p.sortMetrics(p.metrics)
 
 	type Pmetric struct {
 		Metric
