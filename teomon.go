@@ -18,6 +18,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/denisbrodbeck/machineid"
 	"github.com/kirill-scherba/bslice"
 )
 
@@ -26,7 +27,7 @@ const (
 	CmdMetric    byte = 130
 	CmdParameter byte = 131
 
-	version = "0.5.6"
+	version = "0.5.7"
 )
 
 // TeonetInterface define teonet functions used in teomon
@@ -55,12 +56,23 @@ func Connect(teo TeonetInterface, address string, m Metric, t ...TeonetInterface
 	// When connected to monitor
 	teo.WhenConnectedTo(address, func() {
 		m.NewParams()
+
+		// Send metric
 		data, _ := m.MarshalBinary()
 		data = append([]byte{CmdMetric}, data...)
 		teo.SendTo(address, data)
+
+		// Send parameter 'number of peers'
 		mon.SendParam(ParamPeers, teocheck.NumPeers())
+
+		// Send parameter 'host name'
 		if h, err := os.Hostname(); err == nil {
 			mon.SendParam(ParamHost, h)
+		}
+
+		// Send parameter 'machineid'
+		if id, err := machineid.ID(); err != nil {
+			mon.SendParam(ParamMachineID, id)
 		}
 	})
 
@@ -112,9 +124,10 @@ type Metric struct {
 
 // Param constant
 const (
-	ParamOnline = "online"
-	ParamPeers  = "peers"
-	ParamHost   = "host"
+	ParamOnline    = "online"
+	ParamPeers     = "peers"
+	ParamHost      = "host"
+	ParamMachineID = "machineid"
 )
 
 // NewMetric create new metric object
@@ -630,7 +643,8 @@ func (p Peers) String() (str string) {
 		)
 		var numParams = 0
 		m.Params.Each(func(name string, value interface{}) {
-			if name == ParamOnline || name == ParamPeers {
+			switch name {
+			case ParamOnline, ParamPeers, ParamHost, ParamMachineID:
 				return
 			}
 			str += fmt.Sprintf("   %s: %v\n", name, value)
@@ -655,23 +669,26 @@ func (p Peers) Json() (data []byte, err error) {
 
 	type Pmetric struct {
 		Metric
-		Online interface{}
-		Peers  interface{}
-		Host   interface{}
+		Online    interface{}
+		Peers     interface{}
+		Host      interface{}
+		MachineID interface{}
 	}
 
 	var pmetrics []Pmetric
 
-	// Add online and peers to output json
+	// Add common parameters to output json
 	for _, m := range p.metrics {
 		online, _ := m.Params.Get(ParamOnline)
 		peers, _ := m.Params.Get(ParamPeers)
 		host, _ := m.Params.Get(ParamHost)
+		id, _ := m.Params.Get(ParamMachineID)
 		pm := Pmetric{
-			Metric: *m,
-			Online: online,
-			Peers:  peers,
-			Host:   host,
+			Metric:    *m,
+			Online:    online,
+			Peers:     peers,
+			Host:      host,
+			MachineID: id,
 		}
 		pmetrics = append(pmetrics, pm)
 	}
