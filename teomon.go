@@ -18,7 +18,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/denisbrodbeck/machineid"
 	"github.com/kirill-scherba/bslice"
 )
 
@@ -27,7 +26,7 @@ const (
 	CmdMetric    byte = 130
 	CmdParameter byte = 131
 
-	version = "0.5.7"
+	version = "0.5.8"
 )
 
 // TeonetInterface define teonet functions used in teomon
@@ -71,9 +70,9 @@ func Connect(teo TeonetInterface, address string, m Metric, t ...TeonetInterface
 		}
 
 		// Send parameter 'machineid'
-		if id, err := machineid.ID(); err != nil {
-			mon.SendParam(ParamMachineID, id)
-		}
+		// if id, err := machineid.ID(); err != nil {
+		// 	mon.SendParam(ParamMachineID, id)
+		// }
 	})
 
 	// Connect to monitor
