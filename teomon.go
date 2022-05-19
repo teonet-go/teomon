@@ -26,7 +26,7 @@ const (
 	CmdMetric    byte = 130
 	CmdParameter byte = 131
 
-	version = "0.5.10"
+	version = "0.5.11"
 )
 
 // TeonetInterface define teonet functions used in teomon
@@ -127,6 +127,7 @@ const (
 	ParamPeers     = "peers"
 	ParamHost      = "host"
 	ParamMachineID = "machineid"
+	MayOffline     = "mayoffline"
 )
 
 // NewMetric create new metric object
@@ -643,7 +644,7 @@ func (p Peers) String() (str string) {
 		var numParams = 0
 		m.Params.Each(func(name string, value interface{}) {
 			switch name {
-			case ParamOnline, ParamPeers, ParamHost, ParamMachineID:
+			case ParamOnline, ParamPeers, ParamHost, ParamMachineID, MayOffline:
 				return
 			}
 			str += fmt.Sprintf("   %s: %v\n", name, value)
@@ -678,16 +679,18 @@ func (p Peers) Json() (data []byte, err error) {
 
 	// Add common parameters to output json
 	for _, m := range p.metrics {
+		mayoffline, _ := m.Params.Get(MayOffline)
 		online, _ := m.Params.Get(ParamOnline)
 		peers, _ := m.Params.Get(ParamPeers)
 		host, _ := m.Params.Get(ParamHost)
 		id, _ := m.Params.Get(ParamMachineID)
 		pm := Pmetric{
-			Metric:    *m,
-			Online:    online,
-			Peers:     peers,
-			Host:      host,
-			MachineID: id,
+			Metric:     *m,
+			MayOffline: mayoffline,
+			Online:     online,
+			Peers:      peers,
+			Host:       host,
+			MachineID:  id,
 		}
 		pmetrics = append(pmetrics, pm)
 	}
