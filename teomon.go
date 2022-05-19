@@ -26,7 +26,7 @@ const (
 	CmdMetric    byte = 130
 	CmdParameter byte = 131
 
-	version = "0.5.11"
+	version = "0.5.12"
 )
 
 // TeonetInterface define teonet functions used in teomon
@@ -669,10 +669,11 @@ func (p Peers) Json() (data []byte, err error) {
 
 	type Pmetric struct {
 		Metric
-		Online    interface{}
-		Peers     interface{}
-		Host      interface{}
-		MachineID interface{}
+		Online     interface{}
+		Peers      interface{}
+		Host       interface{}
+		MachineID  interface{}
+		MayOffline interface{}
 	}
 
 	var pmetrics []Pmetric
