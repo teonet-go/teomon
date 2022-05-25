@@ -26,7 +26,7 @@ const (
 	CmdMetric    byte = 130
 	CmdParameter byte = 131
 
-	version = "0.5.12"
+	version = "0.5.13"
 )
 
 // TeonetInterface define teonet functions used in teomon

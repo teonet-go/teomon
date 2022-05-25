@@ -1,4 +1,4 @@
-module github.com/kirill-scherba/teomon
+module github.com/teonet-go/teomon
 
 go 1.18
 
