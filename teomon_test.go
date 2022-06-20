@@ -148,7 +148,7 @@ func TestParameter(t *testing.T) {
 	par = Parameter{}
 	err = par.UnmarshalBinary(data)
 	if err == nil {
-		err = fmt.Errorf("sucessfully unmarshal not supported type %T", par.Value)
+		err = fmt.Errorf("successfully unmarshal not supported type %T", par.Value)
 		t.Error(err)
 		return
 	}
